@@ -1,13 +1,17 @@
+import * as dotenv from "dotenv";
+dotenv.config({ path: __dirname + '/.env' });
+
 import { mongoose } from "@typegoose/typegoose";
-import { ExchangeCredentials, ExchangeCredentialsModel, ExchangeNames, FTXExchangeCredentials } from "../../../lib/common/database";
+import { ExchangeCredentialsModel, ExchangeNames } from "../../../lib/common/database";
 import BinanceExchange from "../../../lib/common/exchanges/binance/binanace";
 import FTXExchange from "../../../lib/common/exchanges/ftx/ftx";
 import { CheckExchangeRatesInterface, TradeFuturesInterface } from "../../../lib/common/exchanges/HttpExchangeInterfaces";
 import { FTXMonitorExchangeCredentials, MonitorModel, MonitorReportModel, MonitorUserModel } from "../database";
 import { YFSmartContractFactory } from "../web3/SmartContractFactory";
 
-const conString = "mongodb+srv://root:GmTSj8asbXOCd6zQ@balancer.ksbsv.mongodb.net/deltazeroTest?retryWrites=true&w=majority";
-const checkEveryMilliseconds = 2 * 60 * 60 * 1000; // every 2 hours
+const conString = process.env.CONNECTION_STRING as string;
+const repeatEveryMinutes = Number.parseInt(process.env.REPEAT_EVERY_MINUTES as string);
+const checkEveryMilliseconds = repeatEveryMinutes * 60 * 1000; // every 2 hours
 (async () => {
     // connect
     mongoose.set('useCreateIndex', true);
@@ -34,7 +38,6 @@ const checkEveryMilliseconds = 2 * 60 * 60 * 1000; // every 2 hours
                 let exchangeCredentials = Array.from(monitor!.exchangeCredentials);
                 let accountDetails = await Promise.all(exchangeCredentials.map(async exchangeCredentials => {
                     let _excid = exchangeCredentials.exchangeCredentials;
-                    let market = exchangeCredentials.market;
                     let tradeSymbol = exchangeCredentials.tradeSymbol;
                     let exchange = await ExchangeCredentialsModel.findById(_excid).exec();
                     let exchangeInsterface: TradeFuturesInterface & CheckExchangeRatesInterface;

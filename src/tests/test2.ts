@@ -1,3 +1,6 @@
+import * as dotenv from "dotenv";
+dotenv.config({ path: __dirname + '/.env' });
+
 import { mongoose } from "@typegoose/typegoose";
 import { BinanceExchangeCredentialsModel, ExchangeCredentials, ExchangeCredentialsModel, ExchangeNames, FTXExchangeCredentialsModel, UserModel } from "../lib/common/database";
 import { ContractEnum } from "../lib/common/defi/ContractEnum";
@@ -8,7 +11,7 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
 
 (async () => {
     mongoose.set('useCreateIndex', true);
-    let conString = "mongodb+srv://root:GmTSj8asbXOCd6zQ@balancer.ksbsv.mongodb.net/deltazeroTest?retryWrites=true&w=majority"
+    const conString = process.env.CONNECTION_STRING as string;
     await mongoose.connect(conString,
         {
             useNewUrlParser: true,
