@@ -1,10 +1,9 @@
-import { prop, getModelForClass, Ref, getDiscriminatorModelForClass, mongoose } from '@typegoose/typegoose';
+import { prop, getModelForClass, Ref, getDiscriminatorModelForClass } from '@typegoose/typegoose';
 import { Base, TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
-import { Types } from 'mongoose';
 import { ExchangeCredentials, MongooseModel, User, UserModel } from '../../lib/common/database';
 import { ContractEnum } from '../../lib/common/defi/ContractEnum';
-import { TransactionsSide, TransactionStatusEnum } from '../../lib/common/exchanges/HttpExchangeInterfaces';
-import { ReportInterface } from './reports/ReportInterface';
+import { TransactionsSide } from '../../lib/common/exchanges/HttpExchangeInterfaces';
+
 
 //#region SUBDOCUMENTS
 export class MonitorTradeSettings {
