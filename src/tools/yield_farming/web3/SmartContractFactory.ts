@@ -1,7 +1,7 @@
 import { ContractEnum } from "../../../lib/common/defi/ContractEnum";
 import { HttpProviderOptions } from "web3-core-helpers";
 import { YFBalancer } from "./YFBalancer";
-import { GetHedgeTargetInterface } from "./SmartContractIntefaces";
+import { GetAssetsBalanceInterface, GetHedgeTargetInterface } from "./SmartContractIntefaces";
 
 export class YFSmartContractFactory {
     private _host: string;
@@ -10,7 +10,7 @@ export class YFSmartContractFactory {
         this._host = host;
         this._options = options;
     }
-    public getYFSmartContract(YFSmartContract: ContractEnum, contractAddress: string): GetHedgeTargetInterface {
+    public getYFSmartContract(YFSmartContract: ContractEnum, contractAddress: string): GetHedgeTargetInterface & GetAssetsBalanceInterface{
         switch (YFSmartContract) {
             case ContractEnum.Balancer:
                 return new YFBalancer(contractAddress, this._host, this._options);

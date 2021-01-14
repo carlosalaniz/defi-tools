@@ -1,8 +1,10 @@
 import { prop, getModelForClass, Ref, getDiscriminatorModelForClass, mongoose } from '@typegoose/typegoose';
 import { Base, TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
+import { Types } from 'mongoose';
 import { ExchangeCredentials, MongooseModel, User, UserModel } from '../../lib/common/database';
 import { ContractEnum } from '../../lib/common/defi/ContractEnum';
 import { TransactionsSide, TransactionStatusEnum } from '../../lib/common/exchanges/HttpExchangeInterfaces';
+import { ReportInterface } from './reports/ReportInterface';
 
 //#region SUBDOCUMENTS
 export class MonitorTradeSettings {
@@ -23,6 +25,9 @@ export class MonitorExchangeCredentials {
     @prop({ required: true })
     public market!: string
 
+    @prop({ required: true })
+    public tradeSymbol!: string;
+
     @prop({ default: 1 })
     public orderDistributionPercentage!: number;
 }
@@ -38,7 +43,8 @@ export class FTXMonitorExchangeCredentials extends MonitorExchangeCredentials {
 export enum MonitorStatus {
     Running = 'running',
     Stopped = "stopped",
-    HasPendingOrders = 'haspendingorders'
+    HasPendingOrders = 'haspendingorders',
+    HasBadConfiguration = 'hasbadconfiguration'
 }
 //#endregion
 
@@ -79,6 +85,13 @@ export class PendingOrder extends TimeStamps {
     public side!: TransactionsSide;
 }
 
+
+export interface MonitorReport extends Base { }
+export class MonitorReport extends TimeStamps {
+    @prop()
+    report!: any
+}
+
 export interface Monitor extends Base { }
 export class Monitor extends TimeStamps {
     @prop({ ref: 'MonitorUser' })
@@ -117,7 +130,7 @@ export class Monitor extends TimeStamps {
 
 export class MonitorUser extends User {
     @prop({ ref: 'Monitor' })
-    public monitors?: Ref<Monitor>[];
+    public monitors!: Ref<Monitor>[];
 
     @prop({ ref: "ExchangeCredentials" })
     public exchangeCredentials?: Ref<ExchangeCredentials>[]
@@ -141,3 +154,4 @@ export const MonitorUserModel: MongooseModel<MonitorUser> = getDiscriminatorMode
 export const TransactionModel: MongooseModel<Transaction> = getModelForClass(Transaction);
 export const MonitorModel: MongooseModel<Monitor> = getModelForClass(Monitor);
 export const PendingOrderModel: MongooseModel<PendingOrder> = getModelForClass(PendingOrder);
+export const MonitorReportModel: MongooseModel<MonitorReport> = getModelForClass(MonitorReport);

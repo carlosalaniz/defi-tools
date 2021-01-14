@@ -1,7 +1,7 @@
 import { ExchangeCredentials, ExchangeNames } from "../../../lib/common/database";
 import BinanceExchange from "../../../lib/common/exchanges/binance/binanace";
 import FTXExchange from "../../../lib/common/exchanges/ftx/ftx";
-import { TransactionsSide, TransactionStatusEnum } from "../../../lib/common/exchanges/HttpExchangeInterfaces";
+import { TransactionsSide } from "../../../lib/common/exchanges/HttpExchangeInterfaces";
 import { FTXMonitorExchangeCredentials, Monitor, MonitorExchangeCredentials, PendingOrder, Transaction } from "../database";
 import { YFSmartContractFactory } from "../web3/SmartContractFactory";
 import { GetHedgeTargetInterface } from "../web3/SmartContractIntefaces";
@@ -14,10 +14,11 @@ import {
     MonitorHasPendingOrderErrorMessage
 } from "./MonitorProcessInterfaces";
 import { v4 as uuidv4 } from 'uuid';
-import { mongoose } from "@typegoose/typegoose";
+
 type MonitorExchanges = {
     exchange?: (BinanceExchange | FTXExchange)
 } & MonitorExchangeCredentials
+
 export class MonitorProcess {
     private _exchanges!: MonitorExchanges[];
     private _maxPrecision!: number;
@@ -126,6 +127,7 @@ export class MonitorProcess {
         MonitorProcess._self._stopFlag = true;
         MonitorProcess._self._errorFlag = true;
     }
+    
     private exitProcess() {
         if (!MonitorProcess._self._errorFlag) {
             MonitorProcess._self.SendMessage({
@@ -136,6 +138,7 @@ export class MonitorProcess {
         }
         return MonitorProcess._self._process.exit();
     }
+
     private async LoopBody() {
         //#region Main loop body
         if (
@@ -156,10 +159,8 @@ export class MonitorProcess {
 
                 let position = await MonitorProcess._self.getTotalPositionAsync();
                 let hedgeTarget = +rawHedgeTarget.toFixed(MonitorProcess._self._maxPrecision);
-                // hedgeTarget = .55;
                 let delta = +(hedgeTarget + position);
                 let absDelta = Math.abs(delta);
-                absDelta = .55;
                 if (absDelta > tradeMin) {
                     if (absDelta <= stopMax) {
                         if (delta > 0) {
@@ -189,11 +190,10 @@ export class MonitorProcess {
                     });
                 }
             } catch (e) {
-                var error = e;
                 MonitorProcess.handleError({
                     action: "messageout",
                     type: "error",
-                    body: new UnexpectedErrorMessage(error.message)
+                    body: new UnexpectedErrorMessage(JSON.stringify(e))
                 });
             }
         }

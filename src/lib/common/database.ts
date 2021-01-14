@@ -15,9 +15,6 @@ export class User extends TimeStamps {
     public password!: string;
 }
 
-
-
-
 export interface ExchangeCredentials extends Base { }
 @index({ apikey: 1, apisecret: 1 }, { unique: true })
 export class ExchangeCredentials extends TimeStamps {
@@ -34,12 +31,12 @@ export class ExchangeCredentials extends TimeStamps {
 export class FTXExchangeCredentials extends ExchangeCredentials {
     @prop({ required: true, default: ExchangeNames.FTX })
     public exchangeName: ExchangeNames = ExchangeNames.FTX;
-    
-    @prop({ required: true })
+
+    @prop({ required: true, type: [String] })
     public subaccounts!: string[];
 }
 
-export class BinanceExchangeCredentials extends ExchangeCredentials { 
+export class BinanceExchangeCredentials extends ExchangeCredentials {
     @prop({ required: true, default: ExchangeNames.BINANCE })
     public exchangeName: ExchangeNames = ExchangeNames.BINANCE;
 }

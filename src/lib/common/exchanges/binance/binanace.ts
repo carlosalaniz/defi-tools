@@ -34,10 +34,6 @@ export default class BinanceExchange implements TradeFuturesInterface, CheckBala
         });
     }
 
-    async tryGetAccountCollateralAsync(): Promise<number> {
-        throw new Error("Method not implemented.");
-    }
-
     private signPayload(queryString: string): string {
         var hmac = crypto.createHmac('sha256', this.secretkey);
         hmac.update(queryString.replace(",", ""));
@@ -54,6 +50,7 @@ export default class BinanceExchange implements TradeFuturesInterface, CheckBala
         let path = `/fapi/v2/account`;
         try {
             let accountInfo = await this.getfapi(path);
+            accountInfo.data.positions = accountInfo.data.positions.filter((p: any) => Math.abs(+p.positionAmt) > 0)
             return accountInfo.data;
         } catch (e) {
             if (e && e.response.status >= 400 && e.response.status < 500) {

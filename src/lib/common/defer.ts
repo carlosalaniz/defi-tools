@@ -26,8 +26,8 @@
  * }
  *
  * unknownResult()
- *   .then(console.log)
- *   .catch(console.error)
+ *   .then(loggerlog)
+ *   .catch(loggererror)
  */
 export default () => {
   const bag = {}

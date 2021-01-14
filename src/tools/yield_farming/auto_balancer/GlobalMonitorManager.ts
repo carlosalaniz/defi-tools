@@ -3,16 +3,46 @@ import { Types } from 'mongoose';
 import * as path from 'path';
 import { ExchangeCredentials, MongooseModel } from '../../../lib/common/database';
 import defer from '../../../lib/common/defer';
+import { logger } from '../../../lib/common/logger';
 import { Monitor, MonitorStatus, MonitorUser, PendingOrder, Transaction } from '../database';
 import { MonitorMessageInterface, EmitMessageInterface, MessageTypeEnum, InitMessage, MonitorErrorsEnum, UnexpectedErrorMessage, TradeLimitReachedErrorMessage, BadConfigurationErrorMessage, NewTransactionMessage, HeartbeatMilliSeconds, StopMessage } from './MonitorProcessInterfaces';
 
+export async function getMonitorAndExchanges(mref: Monitor | string | Types.ObjectId | undefined) {
+    const _globalMonitorManager = GlobalMonitorManager.getInstance();
+    let monitor_id = mref instanceof Monitor ? mref._id : mref;
+    let monitor = (await _globalMonitorManager.MonitorModel!.findById(monitor_id).exec())?.toObject() as Monitor | undefined;
+    if (monitor) {
+        let exchangeCredentials = await Promise.all(
+            monitor.exchangeCredentials.map(
+                async monitorExCred => {
+                    let exchangeCredentials = await _globalMonitorManager.ExchangeCredentialsModel!.findById(monitorExCred.exchangeCredentials).exec();
+                    return exchangeCredentials!.toObject() as ExchangeCredentials;
+                })
+        );
+        return {
+            monitor: monitor,
+            exchangeCredentials: exchangeCredentials
+        }
 
+    }
+};
 
+export async function getUserMonitors(_id: string): Promise<{ monitor: Monitor, exchangeCredentials: ExchangeCredentials[] }[] | null> {
+    const _globalMonitorManager = GlobalMonitorManager.getInstance();
+    let user = await _globalMonitorManager.UserModel!.findById(_id).exec()
+
+    if (user) {
+        return await Promise.all(user.monitors!.map(
+            async mref => await getMonitorAndExchanges(mref) as { monitor: Monitor, exchangeCredentials: ExchangeCredentials[] }
+        ));
+    }
+    return null;
+};
 
 export class GlobalMonitorManager {
     private static _heartbeatTimeoutMilliSeconds = HeartbeatMilliSeconds + 5000;
     public static instance?: GlobalMonitorManager;
-
+    public static _healthcheckTimoutSeconds = 60;
     private _globalMonitorRegistry: {
         [key: string]:
         {
@@ -39,13 +69,12 @@ export class GlobalMonitorManager {
             for (let processkey in GlobalMonitorManager.instance!._globalMonitorRegistry) {
                 let process = GlobalMonitorManager.instance!._globalMonitorRegistry[processkey];
                 let timeDelta = (+Date.now()) - process.lastSeen;
-                console.log("healthCheck", timeDelta);
                 if (timeDelta >= GlobalMonitorManager._heartbeatTimeoutMilliSeconds) {
                     let monitorExchanges = await getMonitorAndExchanges(processkey);
                     GlobalMonitorManager.instance!.forkMonitorAsync(monitorExchanges!.monitor, monitorExchanges!.exchangeCredentials);
                 };
             }
-        }, 60000)
+        }, GlobalMonitorManager._healthcheckTimoutSeconds * 1000)
     }
 
     public static initiliaze(
@@ -116,13 +145,14 @@ export class GlobalMonitorManager {
 
     //#region EventHandlers
     private async OnMessageRecievedAsync(message: MonitorMessageInterface<EmitMessageInterface>) {
+        logger.debug(message);
         if (message.type === "success") {
             switch (message.body.type as MessageTypeEnum) {
                 case MessageTypeEnum.Heartbeat:
                     GlobalMonitorManager.instance!.OnMonitorHeartbeatMessage(message._monitorId!);
                     break;
                 case MessageTypeEnum.MonitorStoped:
-                    GlobalMonitorManager.instance!.OnMonitorStoppedMessage(message._monitorId!);
+                    GlobalMonitorManager.instance!.OnMonitorStoppedMessageAsync(message._monitorId!);
                     break;
                 case MessageTypeEnum.DeltaZero:
                     GlobalMonitorManager.instance!.OnDeltaZeroMessage(message._monitorId!);
@@ -152,9 +182,9 @@ export class GlobalMonitorManager {
     }
 
     private async OnMonitorHasPendingOrderErrorAsync(_monitorId: string) {
-        console.log("OnMonitorHasPendingOrderErrorAsync", _monitorId);
+        logger.log("OnMonitorHasPendingOrderErrorAsync", _monitorId);
         let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
-        if(monitor){
+        if (monitor) {
             monitor.status = MonitorStatus.HasPendingOrders;
             await monitor.save();
             delete GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId];
@@ -164,12 +194,12 @@ export class GlobalMonitorManager {
 
     private OnMonitorHeartbeatMessage(_monitorId: string) {
         let lastSeen = GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId].lastSeen
-        console.log("Heartbeat", _monitorId, ((+new Date()) - lastSeen));
+        logger.log("Heartbeat", _monitorId, ((+new Date()) - lastSeen));
         GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId].lastSeen = +new Date();
     }
 
     private async OnMonitorStartedMessageAsync(child: ChildProcess, monitor: Monitor, exchangeCredentials: ExchangeCredentials[]) {
-        console.log("Process started");
+        logger.log("Process started");
         let pendingOrders = await GlobalMonitorManager.instance!.PendingOrderModel.find(
             { _monitor: monitor._id }
         ).exec();
@@ -181,107 +211,59 @@ export class GlobalMonitorManager {
         }));
     }
 
-    private OnMonitorStoppedMessage(_monitorId: string) {
-        console.log("OnMonitorStopped", _monitorId);
-        delete GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId.toString()];
+    private async OnMonitorStoppedMessageAsync(_monitorId: string) {
+        logger.log("OnMonitorStopped", _monitorId);
+        let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
+        if (monitor) {
+            monitor.status = MonitorStatus.Stopped;
+            await monitor.save();
+            delete GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId];
+        }
     }
 
     private OnDeltaZeroMessage(_monitorId: string) {
-        console.log("Delta Zero", _monitorId);
+        logger.log("Delta Zero", _monitorId);
     }
 
     private async OnNewTransactionMessageAsync(_monitorId: string, transaction: NewTransactionMessage) {
+        logger.log("Transaction", _monitorId, transaction);
         try {
             let newTransaction = new GlobalMonitorManager.instance!.TransactionModel(transaction.payload);
             await newTransaction.save();
-            console.log("Transaction", _monitorId, transaction);
         } catch (e) {
-            console.log(e);
+            logger.log(e);
         }
     }
 
     private async OnTradeLimitReachedErrorAsync(_monitorId: string, message: TradeLimitReachedErrorMessage) {
-        let payload = message.payload;
-        let newPendingOrder = new GlobalMonitorManager.instance!.PendingOrderModel(payload);
+        logger.log("OnTradeLimitReachedErrorAsync", _monitorId, message);
+        let newPendingOrder = new GlobalMonitorManager.instance!.PendingOrderModel(message.payload);
         await newPendingOrder.save()
+
         let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
-        if(monitor){
+        if (monitor) {
             monitor.status = MonitorStatus.HasPendingOrders;
             await monitor.save();
             delete GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId];
         }
-        console.log("OnTradeLimitReachedErrorAsync", _monitorId, message);
     }
 
     private async OnBadConfigurationError(_monitorId: string, message: BadConfigurationErrorMessage) {
-        console.log("OnBadConfigurationError", _monitorId, message);
+        let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
+        if (monitor) {
+            monitor.status = MonitorStatus.HasBadConfiguration;
+            await monitor.save();
+            delete GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId];
+        }
     }
 
     private async OnUnExpectedErrorAsync(_monitorId: string, message: UnexpectedErrorMessage) {
-        console.log("OnUnExpectedErrorAsync", _monitorId, message);
+        logger.log("OnUnExpectedErrorAsync", _monitorId, message);
+        logger.log(`Monitor will attempt to restart in ${GlobalMonitorManager._healthcheckTimoutSeconds} seconds...`)
     }
     //#endregion
 }
 
-async function getMonitorAndExchanges(mref: Monitor | string | Types.ObjectId | undefined) {
-    const _globalMonitorManager = GlobalMonitorManager.getInstance();
-    let monitor_id = mref instanceof Monitor ? mref._id : mref;
-    let monitor = (await _globalMonitorManager.MonitorModel!.findById(monitor_id).exec())?.toObject() as Monitor | undefined;
-    if (monitor) {
 
 
-        let exchangeCredentials = await Promise.all(
-            monitor.exchangeCredentials.map(
-                async monitorExCred => {
-                    let exchangeCredentials = await _globalMonitorManager.ExchangeCredentialsModel!.findById(monitorExCred.exchangeCredentials).exec();
-                    return exchangeCredentials!.toObject() as ExchangeCredentials;
-                })
-        );
-        return {
-            monitor: monitor,
-            exchangeCredentials: exchangeCredentials
-        }
 
-    }
-}
-
-async function getUserMonitors(_id: string): Promise<{ monitor: Monitor, exchangeCredentials: ExchangeCredentials[] }[] | null> {
-    const _globalMonitorManager = GlobalMonitorManager.getInstance();
-    let user = await _globalMonitorManager.UserModel!.findById(_id).exec()
-
-    if (user) {
-        return await Promise.all(user.monitors!.map(
-            async mref => await getMonitorAndExchanges(mref) as { monitor: Monitor, exchangeCredentials: ExchangeCredentials[] }
-        ));
-    }
-    return null;
-};
-
-export class UserMonitorManager {
-    private _id: string;
-    private _globalMonitorManager: GlobalMonitorManager;
-    constructor(
-        _id: string
-    ) {
-        this._globalMonitorManager = GlobalMonitorManager.getInstance();
-        this._id = _id;
-        getUserMonitors(this._id).then(monitors => {
-            if (monitors) {
-                monitors.filter(m => m.monitor.status === MonitorStatus.Running)
-                    .forEach(monitor => this._globalMonitorManager.forkMonitorAsync(monitor.monitor, monitor.exchangeCredentials));
-            }
-        })
-    }
-
-    public async startMonitorAsync(monitorId: Types.ObjectId | string) {
-        let m = await getMonitorAndExchanges(monitorId);
-        if (m) {
-            return this._globalMonitorManager.forkMonitorAsync(m.monitor, m.exchangeCredentials);
-        }
-        throw `${monitorId} not found`;
-    }
-
-    public async stopMonitorAsync() {
-
-    }
-}

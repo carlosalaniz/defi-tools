@@ -32,10 +32,6 @@ export default class FTXExchange implements TradeFuturesInterface, CheckBalanceI
         });
     }
     
-    async tryGetAccountCollateralAsync(): Promise<number> {
-        throw new Error("Method not implemented.");
-    }
-
     private signPayload(time: number, method: "get" | "post", api_enpoint: string, body?: any): string {
         var hmac = crypto.createHmac('sha256', this.apisecret);
         let payload = "";
@@ -62,7 +58,7 @@ export default class FTXExchange implements TradeFuturesInterface, CheckBalanceI
 
     async tryCheckExchangeRatesInterfaceAsync(mi: string, mo: string): Promise<number> {
         let marketin = this.stableAssetMap[mi] || mi;
-        let marketout = this.stableAssetMap[mo] || mo;
+        let marketout = mo;
         // example: BTC/USD
         let spot = `${marketin}/${marketout}`
         let path = `/api/markets/${spot}`

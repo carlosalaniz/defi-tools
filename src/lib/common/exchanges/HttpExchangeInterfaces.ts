@@ -19,7 +19,6 @@ export interface TradeFuturesInterface extends HttpExchangeInterface {
     orderPrecision: number;
     tryPlaceFuturesMarketOrderAsync(amount: number, side: TransactionsSide, market: string): Promise<void>;
     tryGetAccountInformationAsync(subaccount?: string): Promise<any>;
-    tryGetAccountCollateralAsync(): Promise<number>
 }
 
 export interface CheckExchangeRatesInterface extends HttpExchangeInterface {

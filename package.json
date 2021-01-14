@@ -18,13 +18,18 @@
     "@types/node": "^14.14.19",
     "@types/uuid": "^8.3.0",
     "@types/web3": "^1.2.2",
+    "copyfiles": "^2.4.1",
+    "rimraf": "^3.0.2",
     "ts-node": "^9.1.1",
     "typescript": "^4.1.3"
   },
   "scripts": {
+    "rimraf": "./node_modules/rimraf/bin.js",
+    "clean": "rimraf bin/",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run build:live",
-    "build": "tsc -p .",
+    "copyJson": "copyfiles --up 1 src/**/*.json bin",
+    "build": "npm run clean && tsc -p . && npm run copyJson",
     "build:live": "nodemon --watch 'src/**/*.ts' --exec \"ts-node\" src/index.ts"
   },
   "repository": {
