@@ -67,6 +67,7 @@ const checkEveryMilliseconds = repeatEveryMinutes * 60 * 1000; // every 2 hours
                     }
                 }));
                 return {
+                    _mid: monitor!._id,
                     wallet,
                     targetAssetAddress,
                     contractName,
@@ -78,9 +79,11 @@ const checkEveryMilliseconds = repeatEveryMinutes * 60 * 1000; // every 2 hours
                 let report = new MonitorReportModel()
                 report.report = monitorReport;
                 await report.save();
+                console.log("report saved", monitorReport._mid)
             }));
         }));
         setTimeout(fetchReportsAndPersist, checkEveryMilliseconds);
     }
+
     await fetchReportsAndPersist();
 })()
