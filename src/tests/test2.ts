@@ -1,8 +1,10 @@
 import { mongoose } from "@typegoose/typegoose";
-import { BinanceExchangeCredentialsModel, ExchangeCredentials, ExchangeCredentialsModel, ExchangeNames, FTXExchangeCredentialsModel, UserModel } from "./lib/common/database";
-import { ContractEnum } from "./lib/common/defi/ContractEnum";
-import { GlobalMonitorManager, UserMonitorManager } from "./tools/yield_farming/auto_balancer/ParentProcess";
-import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderModel, TransactionModel } from "./tools/yield_farming/database";
+import { BinanceExchangeCredentialsModel, ExchangeCredentials, ExchangeCredentialsModel, ExchangeNames, FTXExchangeCredentialsModel, UserModel } from "../lib/common/database";
+import { ContractEnum } from "../lib/common/defi/ContractEnum";
+import { logger } from "../lib/common/logger";
+import { GlobalMonitorManager } from "../tools/yield_farming/auto_balancer/GlobalMonitorManager";
+import { UserMonitorManager } from "../tools/yield_farming/auto_balancer/UserMonitorManager";
+import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderModel, TransactionModel } from "../tools/yield_farming/database";
 
 (async () => {
     mongoose.set('useCreateIndex', true);
@@ -39,11 +41,13 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
             {
                 exchangeCredentials: ftxExchangeCredentials._id,
                 market: "BAL-PERP",
+                tradeSymbol:"BAL",
                 orderDistributionPercentage: .5
             },
             {
                 exchangeCredentials: binanceExchangeCredentials._id,
                 market: "BALUSDT",
+                tradeSymbol:"BAL",
                 orderDistributionPercentage: .5
             }
         ],
@@ -66,7 +70,7 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
     await user.save();
 
     GlobalMonitorManager.initiliaze(
-        UserModel,
+        MonitorUserModel,
         MonitorModel,
         ExchangeCredentialsModel,
         TransactionModel,
@@ -82,4 +86,4 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
     }, 25000)
 })()
 
-console.log("1")
+logger.log("1")

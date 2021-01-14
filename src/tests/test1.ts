@@ -1,10 +1,11 @@
 import { fork as forkChildProcess } from 'child_process';
 import path from 'path';
-import { ExchangeNames, FTXExchangeCredentials } from './lib/common/database';
-import { ContractEnum } from './lib/common/defi/ContractEnum';
-import { EmitMessageInterface, MessageTypeEnum, InitMessage, MonitorMessageInterface, MonitorErrorsEnum } from './tools/yield_farming/auto_balancer/MonitorProcessInterfaces';
-import { Monitor, MonitorStatus, Transaction } from './tools/yield_farming/database';
+import { ExchangeNames, FTXExchangeCredentials } from '../lib/common/database';
+import { ContractEnum } from '../lib/common/defi/ContractEnum';
+import { EmitMessageInterface, MessageTypeEnum, InitMessage, MonitorMessageInterface, MonitorErrorsEnum } from '../tools/yield_farming/auto_balancer/MonitorProcessInterfaces';
+import { Monitor, MonitorStatus, Transaction } from '../tools/yield_farming/database';
 import { mongoose } from '@typegoose/typegoose';
+import { logger } from '../lib/common/logger';
 const MonitorProcessPath = path.resolve(__dirname + "/tools/yield_farming/auto_balancer/MonitorProcess")
 
 let exchangeCredentials: FTXExchangeCredentials = {
@@ -22,6 +23,7 @@ let monitor: Monitor = {
         {
             exchangeCredentials: new mongoose.Types.ObjectId("5ffa189c933da736fa05d753"),
             market: "BAL-PERP",
+            tradeSymbol:"BAL",
             orderDistributionPercentage: 1
         }
     ],
@@ -62,7 +64,7 @@ child.on("message", (message: MonitorMessageInterface<EmitMessageInterface>) => 
                 break;
             case MessageTypeEnum.NewTransaction:
                 let transaction = message.body.payload as Transaction;
-                console.warn("transaction", transaction);
+                logger.warn("transaction", transaction);
         }
     } else {
         switch (message.body.type as MonitorErrorsEnum) {
@@ -73,7 +75,7 @@ child.on("message", (message: MonitorMessageInterface<EmitMessageInterface>) => 
             case MonitorErrorsEnum.UnexpectedError:
         }
     }
-    console.log({ _id: message._monitorId, ...message.body });
+    logger.log({ _id: message._monitorId, ...message.body });
 })
-console.log(1);
+logger.log(1);
 
