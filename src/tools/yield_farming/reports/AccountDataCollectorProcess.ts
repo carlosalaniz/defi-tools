@@ -8,6 +8,7 @@ import FTXExchange from "../../../lib/common/exchanges/ftx/ftx";
 import { CheckExchangeRatesInterface, TradeFuturesInterface } from "../../../lib/common/exchanges/HttpExchangeInterfaces";
 import { FTXMonitorExchangeCredentials, MonitorModel, MonitorReportModel, MonitorUserModel } from "../database";
 import { YFSmartContractFactory } from "../web3/SmartContractFactory";
+import { logger } from "../../../lib/common/logger";
 
 const conString = process.env.CONNECTION_STRING as string;
 const repeatEveryMinutes = Number.parseInt(process.env.REPEAT_EVERY_MINUTES as string);
@@ -81,12 +82,12 @@ const checkEveryMilliseconds = repeatEveryMinutes * 60 * 1000; // every 2 hours
                     let report = new MonitorReportModel()
                     report.report = monitorReport;
                     await report.save();
-                    console.log("report saved", monitorReport._mid)
+                    logger.log("report saved", monitorReport._mid)
                 }));
             }));
             setTimeout(fetchReportsAndPersist, checkEveryMilliseconds);
         } catch (e) {
-            console.log(e);
+            logger.log(e);
         }
     }
 
