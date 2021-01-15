@@ -9,12 +9,10 @@ export class Web3HttpContractFactory extends BaseWeb3HttpContractFactory {
         super(host, options);
         this.contractResgistry = {};
         this.contractResgistry[ContractEnum.Balancer] = {
-            abi: require("./balancer/abi.json"), 
-            decimals: 18
+            abi: require("./balancer/abi.json")
         };
         this.contractResgistry[ContractEnum.OneInch] = {
-            abi: require("./1inch/abi.json"),
-            decimals: 18
+            abi: require("./1inch/abi.json")
         }
     }
 }

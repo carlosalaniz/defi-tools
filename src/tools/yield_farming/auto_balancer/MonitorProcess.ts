@@ -65,7 +65,7 @@ export class MonitorProcess {
     }
 
     private static validateTotalDistribution() {
-        let exchanges = MonitorProcess._self._monitor.exchangeCredentials;
+        let exchanges = MonitorProcess._self._monitor.exchangeData;
         let totalDistribution = exchanges.reduce((accumulator, currentValue) => {
             return accumulator + currentValue.orderDistributionPercentage;
         }, 0);
@@ -157,8 +157,9 @@ export class MonitorProcess {
                     throw error;
                 }
 
-                let position = await MonitorProcess._self.getTotalPositionAsync();
+                let rawPosition = await MonitorProcess._self.getTotalPositionAsync();
                 let hedgeTarget = +rawHedgeTarget.toFixed(MonitorProcess._self._maxPrecision);
+                let position = +rawPosition.toFixed(MonitorProcess._self._maxPrecision);
                 let delta = +(hedgeTarget + position);
                 let absDelta = Math.abs(delta);
                 if (absDelta > tradeMin) {
@@ -258,7 +259,7 @@ export class MonitorProcess {
         MonitorProcess._self._exchanges = initparamaters.monitorExchangeCredentials
             .map(exchangeCredentials => {
                 let exchange = undefined;
-                let monitorExchangeCredentials = initparamaters.monitor.exchangeCredentials.filter(
+                let monitorExchangeCredentials = initparamaters.monitor.exchangeData.filter(
                     cred => {
                         let id = cred.exchangeCredentials instanceof ExchangeCredentials ? cred.exchangeCredentials._id : cred.exchangeCredentials;
                         return id === exchangeCredentials._id

@@ -2,17 +2,16 @@ import Web3 from "web3";
 import { Contract } from "web3-eth-contract";
 import { HttpProviderOptions } from "web3-core-helpers";
 import { ContractEnum } from "../defi/ContractEnum";
+const ERC20Contract = require('erc20-contract-js');
 
 export type ContractRegistry = {
     [key: string]: {
         abi: any;
-        decimals: number;
     };
 }
 
 export type ContractInterface = {
-    contract: Contract,
-    decimals: number
+    contract: Contract
 }
 
 export interface SmartContractFactoryInterface {
@@ -26,11 +25,14 @@ abstract class BaseWeb3EthContractFactory implements SmartContractFactoryInterfa
         let contractInformation = this.contractResgistry[contractName];
         if (contractInformation) {
             return {
-                contract: new this.web3Provider.eth.Contract(contractInformation.abi, contractAddress),
-                decimals: contractInformation.decimals
+                contract: new this.web3Provider.eth.Contract(contractInformation.abi, contractAddress)
             }
         }
         throw `Contract ${contractName} not defined.`
+    }
+    
+    getERC20TokenInterface(address: string) {
+        return new ERC20Contract(this.web3Provider, address)
     }
 }
 

@@ -1,17 +1,21 @@
 import "reflect-metadata";
 import { Base, TimeStamps } from "@typegoose/typegoose/lib/defaultClasses";
-import { mongoose, getModelForClass, index, Ref, DocumentType, prop, modelOptions, getDiscriminatorModelForClass } from '@typegoose/typegoose';
-
+import { plugin, mongoose, getModelForClass, index, Ref, DocumentType, prop, modelOptions, getDiscriminatorModelForClass } from '@typegoose/typegoose';
+import mhidden from "mongoose-hidden";
 export type MongooseModel<T> = mongoose.Model<DocumentType<T>>;
 export type MongooseDocument<T> = DocumentType<T>;
 export enum ExchangeNames { FTX = "FTX", BINANCE = "BINANCE" }
+const hideFields = mhidden({ defaultHidden: {} });
+
+
 
 export interface User extends Base { }
+@plugin(hideFields)
 export class User extends TimeStamps {
     @prop({ lowercase: true, index: true, unique: true })
     public email!: string;
 
-    @prop()
+    @prop({hide: true, hideJSON: true})
     public password!: string;
 }
 
