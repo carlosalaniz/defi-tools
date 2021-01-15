@@ -19,7 +19,7 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
         });
 
     await mongoose.connection.db.dropDatabase();
-    let user = new MonitorUserModel();
+    let user = new UserModel();
     user.email = "carlos.glvn93@gmail.com";
     user.password = "$2a$10$BG2eOb.fSdBJ2FyYOW4/Mu3HmFuyViyg8fLAH4FQslXM8KMzSJtdK";
     await user.save();
@@ -40,7 +40,7 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
 
     let monitor = new MonitorModel({
         _user: user._id,
-        exchangeCredentials: [
+        exchangeData: [
             {
                 exchangeCredentials: ftxExchangeCredentials._id,
                 market: "BAL-PERP",
@@ -68,9 +68,11 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
     } as Monitor);
 
     await monitor.save();
-    user.monitors?.push(monitor._id);
-    user.exchangeCredentials?.push(ftxExchangeCredentials._id);
-    await user.save();
+    let monitorUser = new MonitorUserModel();
+    monitorUser._user = user._id;
+    monitorUser.monitors?.push(monitor._id);
+    monitorUser.exchangeCredentials?.push(ftxExchangeCredentials._id);
+    await monitorUser.save();
 
     GlobalMonitorManager.initiliaze(
         MonitorUserModel,
@@ -81,12 +83,9 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
     );
 
     let manager = new UserMonitorManager(
-        user._id.toString()
+        monitorUser._user!.toString()
     )
-    setTimeout(() => {
-        let m = GlobalMonitorManager.instance;
-        manager.startMonitorAsync(monitor._id);
-    }, 25000)
+
 })()
 
 logger.log("1")
