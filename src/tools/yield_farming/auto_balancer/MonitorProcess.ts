@@ -191,6 +191,7 @@ export class MonitorProcess {
                     });
                 }
             } catch (e) {
+                let error = JSON.stringify(e);
                 MonitorProcess.handleError({
                     action: "messageout",
                     type: "error",

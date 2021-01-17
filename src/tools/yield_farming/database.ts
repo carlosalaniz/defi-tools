@@ -124,16 +124,12 @@ export class Monitor extends TimeStamps {
     public status!: MonitorStatus;
 
     @prop({ ref: 'Transaction' })
-    public transactions?: Transaction[];
+    public transactions?: Ref<Transaction>[];
 
     static validate(m: Partial<Monitor>): string[] {
         let missingFields =
             ValidateRequiredFields(m, [
                 "exchangeData",
-                "exchangeData.exchangeCredentials",
-                "exchangeData.market",
-                "exchangeData.tradeSymbol",
-                "exchangeData.orderDistributionPercentage",
                 "tradeSettings",
                 "tradeSettings.tradeMinimumAmount",
                 "tradeSettings.tradeMaxminumAmount",
@@ -144,7 +140,7 @@ export class Monitor extends TimeStamps {
                 "walletAddress",
                 "targetAssetAddress"
             ])
-        return missingFields;
+        return missingFields.map(m => m + ":required");
     }
 
 }

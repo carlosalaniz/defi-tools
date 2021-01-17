@@ -1,7 +1,6 @@
 export function nestedEvery(callback: (obj: any) => boolean, obj: any, path: string[], current?: number): boolean {
     if (!current) current = 0;
     if (current === path.length) return true;
-    console.log(obj, path[current], obj[path[current]], path[current]);
     if (callback(obj[path[current]])) {
         return nestedEvery(callback, obj[path[current]], path, current + 1);
     } else {

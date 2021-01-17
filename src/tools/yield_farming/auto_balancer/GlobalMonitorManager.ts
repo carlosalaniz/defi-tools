@@ -230,6 +230,9 @@ export class GlobalMonitorManager {
         try {
             let newTransaction = new GlobalMonitorManager.instance!.TransactionModel(transaction.payload);
             await newTransaction.save();
+            let monitor =  await GlobalMonitorManager.instance!.MonitorModel.findById(transaction.payload._monitor).exec()
+            monitor?.transactions?.push(newTransaction._id);
+            await monitor!.save();
         } catch (e) {
             logger.log(e);
         }

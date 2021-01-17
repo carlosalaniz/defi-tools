@@ -8,6 +8,7 @@ import { ApiUserController } from "./controllers/UserController";
 import path from "path";
 import { StaticController } from "./controllers/StaticController";
 import { ApiMonitorController } from "./controllers/ApiMonitorController";
+import { ApiExchangeController } from "./controllers/ApiExchangeController";
 
 export default (async () => {
     // Connect to Database.
@@ -35,9 +36,13 @@ export default (async () => {
     app.use((rq, rs, n) => { rs.set('Cache-Control', 'no-store'); n() });
 
     // Register controllers.
-    StaticController.register(router, "");
-    ApiUserController.register(router, "");
-    ApiMonitorController.register(router, "");
+    let routes = [
+        StaticController.register(router, ""),
+        ApiUserController.register(router, "/api"),
+        ApiMonitorController.register(router, "/api"),
+        ApiExchangeController.register(router, "/api")
+    ].map(controller => controller.routes);
+    console.log(routes.flat());
 
     app.use("/", router);
     app.locals = {

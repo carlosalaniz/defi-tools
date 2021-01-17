@@ -5,7 +5,7 @@ import { ControllerInterface } from "./ControllerInterface";
 
 export class StaticController extends ControllerInterface {
     routeHandleRegistry = {};
-    constructor(router: Router, prefix: string) {
+    constructor(router?: Router, prefix?: string) {
         super(router, prefix);
         this.routeHandleRegistry = {
             "/": { method: "get", callback: [this.RenderIndexView] }

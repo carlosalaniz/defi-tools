@@ -7,7 +7,7 @@ import { ControllerInterface } from "./ControllerInterface";
 
 export class ApiUserController extends ControllerInterface {
     routeHandleRegistry = {};
-    constructor(router: Router, prefix: string) {
+    constructor(router?: Router, prefix?: string) {
         super(router, prefix);
         this.routeHandleRegistry = {
             "/login": [
@@ -32,6 +32,7 @@ export class ApiUserController extends ControllerInterface {
 
     private async PostRegisterCallback(req: Request, res: Response, next?: NextFunction) {
         let body = req.body as { email?: string, password?: string };
+        
         if (body.email && body.password) {
             let user = await UserModel.findOne({ email: body.email }).exec();
             if (!user) {
@@ -46,6 +47,7 @@ export class ApiUserController extends ControllerInterface {
                 return;
             }
         }
+
         res.status(400).json("400 Bad Request");
     }
 }
