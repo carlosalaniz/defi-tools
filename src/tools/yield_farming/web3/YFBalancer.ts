@@ -7,9 +7,10 @@ import { ContractEnum } from "../../../lib/common/defi/ContractEnum";
 
 export class YFBalancer implements GetHedgeTargetInterface, GetAssetsBalanceInterface {
     private _contractInterface: ContractInterface;
+    private _web3HttpContractFactory: Web3HttpContractFactory;
     constructor(contractAddress: string, host: string, options?: HttpProviderOptions | undefined) {
-        const _web3HttpContractFactory = new Web3HttpContractFactory(host, options);
-        this._contractInterface = _web3HttpContractFactory.getContractInteface(ContractEnum.Balancer, contractAddress);
+        this._web3HttpContractFactory = new Web3HttpContractFactory(host, options);
+        this._contractInterface = this._web3HttpContractFactory.getContractInteface(ContractEnum.Balancer, contractAddress);
     }
     private async getAssetsAddress(): Promise<string[]> {
         let contract = this._contractInterface.contract;
@@ -28,12 +29,10 @@ export class YFBalancer implements GetHedgeTargetInterface, GetAssetsBalanceInte
     
     private async tryGetAssetBalanceAsync(walletAddress: string, tokenAddress: string): Promise<number> {
         let contract = this._contractInterface.contract;
-        let decimals = this._contractInterface.decimals;
-
         let poolTokenBalance = +await contract.methods.getBalance(tokenAddress).call();
         let totalShares = +await contract.methods.totalSupply().call();
         let walletBalance = +await contract.methods.balanceOf(walletAddress).call();
-
+        let decimals = +await this._web3HttpContractFactory.getERC20TokenInterface(tokenAddress).decimals().call()
         let rawBalance = (poolTokenBalance / totalShares) * walletBalance;
         let balance = rawBalance / Math.pow(10, decimals);
 

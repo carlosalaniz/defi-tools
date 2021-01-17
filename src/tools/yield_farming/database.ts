@@ -1,10 +1,10 @@
-import { prop, getModelForClass, Ref, getDiscriminatorModelForClass, mongoose } from '@typegoose/typegoose';
+import { prop, getModelForClass, Ref } from '@typegoose/typegoose';
 import { Base, TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
-import { Types } from 'mongoose';
-import { ExchangeCredentials, MongooseModel, User, UserModel } from '../../lib/common/database';
+import { ExchangeCredentials, MongooseModel, User } from '../../lib/common/database';
 import { ContractEnum } from '../../lib/common/defi/ContractEnum';
-import { TransactionsSide, TransactionStatusEnum } from '../../lib/common/exchanges/HttpExchangeInterfaces';
-import { ReportInterface } from './reports/ReportInterface';
+import { TransactionsSide } from '../../lib/common/exchanges/HttpExchangeInterfaces';
+import { ValidateRequiredFields } from '../../lib/common/mischelpers';
+
 
 //#region SUBDOCUMENTS
 export class MonitorTradeSettings {
@@ -98,9 +98,9 @@ export class Monitor extends TimeStamps {
     public _user!: Ref<MonitorUser>;
 
     @prop({
-        type: MonitorExchangeCredentials, _id: false
+        type: FTXMonitorExchangeCredentials, _id: false
     })
-    public exchangeCredentials!: (FTXMonitorExchangeCredentials | MonitorExchangeCredentials)[];
+    public exchangeData!: (FTXMonitorExchangeCredentials | MonitorExchangeCredentials)[];
 
     @prop({ type: MonitorTradeSettings, _id: false })
     public tradeSettings!: MonitorTradeSettings;
@@ -124,11 +124,31 @@ export class Monitor extends TimeStamps {
     public status!: MonitorStatus;
 
     @prop({ ref: 'Transaction' })
-    public transactions?: Transaction[];
+    public transactions?: Ref<Transaction>[];
+
+    static validate(m: Partial<Monitor>): string[] {
+        let missingFields =
+            ValidateRequiredFields(m, [
+                "exchangeData",
+                "tradeSettings",
+                "tradeSettings.tradeMinimumAmount",
+                "tradeSettings.tradeMaxminumAmount",
+                "tradeSettings.refreshRateSeconds",
+                "contractName",
+                "contractAddress",
+                "web3HttpConnectionString",
+                "walletAddress",
+                "targetAssetAddress"
+            ])
+        return missingFields.map(m => m + ":required");
+    }
 
 }
+export interface MonitorUser extends Base { }
+export class MonitorUser extends TimeStamps {
+    @prop({ ref: 'User', unique: true })
+    public _user!: Ref<User>;
 
-export class MonitorUser extends User {
     @prop({ ref: 'Monitor' })
     public monitors!: Ref<Monitor>[];
 
@@ -137,20 +157,20 @@ export class MonitorUser extends User {
 }
 
 /**
-    interface MonitorUserDocument extends Base {} 
+    interface MonitorUserDocument extends BaseExtention {} 
     class MonitorUserDocument extends MonitorUser{}
 
-    export interface TransactionDocument extends Base {} 
+    export interface TransactionDocument extends BaseExtention {} 
     export class TransactionDocument extends Transaction{}
 
 
-    export interface MonitorDocument extends Base {} 
+    export interface MonitorDocument extends BaseExtention {} 
     export class MonitorDocument extends Monitor{} 
 */
 
 // public nest: Nested;
 //#endregion
-export const MonitorUserModel: MongooseModel<MonitorUser> = getDiscriminatorModelForClass(UserModel, MonitorUser);
+export const MonitorUserModel: MongooseModel<MonitorUser> = getModelForClass(MonitorUser);
 export const TransactionModel: MongooseModel<Transaction> = getModelForClass(Transaction);
 export const MonitorModel: MongooseModel<Monitor> = getModelForClass(Monitor);
 export const PendingOrderModel: MongooseModel<PendingOrder> = getModelForClass(PendingOrder);

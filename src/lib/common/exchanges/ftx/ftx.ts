@@ -10,11 +10,15 @@ export default class FTXExchange implements TradeFuturesInterface, CheckBalanceI
         "USD": "USDC"
     };
 
+    private apikey: string;
     private apisecret: string;
     private api: AxiosInstance;
+    private subaccount: string | undefined;
 
     constructor(apikey: string, apisecret: string, subaccount?: string) {
         this.apisecret = apisecret;
+        this.apikey = apikey;
+        this.subaccount = subaccount;
 
         let headers: { [key: string]: string; } = {
             'FTX-KEY': apikey,

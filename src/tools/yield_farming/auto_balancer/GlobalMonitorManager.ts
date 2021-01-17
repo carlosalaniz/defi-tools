@@ -13,7 +13,7 @@ export async function getMonitorAndExchanges(mref: Monitor | string | Types.Obje
     let monitor = (await _globalMonitorManager.MonitorModel!.findById(monitor_id).exec())?.toObject() as Monitor | undefined;
     if (monitor) {
         let exchangeCredentials = await Promise.all(
-            monitor.exchangeCredentials.map(
+            monitor.exchangeData.map(
                 async monitorExCred => {
                     let exchangeCredentials = await _globalMonitorManager.ExchangeCredentialsModel!.findById(monitorExCred.exchangeCredentials).exec();
                     return exchangeCredentials!.toObject() as ExchangeCredentials;
@@ -29,7 +29,7 @@ export async function getMonitorAndExchanges(mref: Monitor | string | Types.Obje
 
 export async function getUserMonitors(_id: string): Promise<{ monitor: Monitor, exchangeCredentials: ExchangeCredentials[] }[] | null> {
     const _globalMonitorManager = GlobalMonitorManager.getInstance();
-    let user = await _globalMonitorManager.UserModel!.findById(_id).exec()
+    let user = await _globalMonitorManager.UserModel!.findOne({ _user: _id }).exec()
 
     if (user) {
         return await Promise.all(user.monitors!.map(
@@ -230,6 +230,9 @@ export class GlobalMonitorManager {
         try {
             let newTransaction = new GlobalMonitorManager.instance!.TransactionModel(transaction.payload);
             await newTransaction.save();
+            let monitor =  await GlobalMonitorManager.instance!.MonitorModel.findById(transaction.payload._monitor).exec()
+            monitor?.transactions?.push(newTransaction._id);
+            await monitor!.save();
         } catch (e) {
             logger.log(e);
         }
