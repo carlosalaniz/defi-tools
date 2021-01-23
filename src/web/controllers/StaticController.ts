@@ -8,11 +8,21 @@ export class StaticController extends ControllerInterface {
     constructor(router?: Router, prefix?: string) {
         super(router, prefix);
         this.routeHandleRegistry = {
-            "/": { method: "get", callback: [this.RenderIndexView] }
+            "/": { method: "get", callback: [this.RenderIndexView] },
+            "/login": { method: "get", callback: [this.RenderLoginView] },
+            "/register": { method: "get", callback: [this.RenderRegisterView] }
         }
     }
 
     private RenderIndexView(req: Request, res: Response) {
         res.render('index');
+    }
+
+    private RenderLoginView(req: Request, res: Response) {
+        res.render('login');
+    }
+
+    private RenderRegisterView(req: Request, res: Response) {
+        res.render('register');
     }
 }

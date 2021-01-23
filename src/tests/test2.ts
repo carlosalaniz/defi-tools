@@ -6,7 +6,6 @@ import { BinanceExchangeCredentialsModel, ExchangeCredentials, ExchangeCredentia
 import { ContractEnum } from "../lib/common/defi/ContractEnum";
 import { logger } from "../lib/common/logger";
 import { GlobalMonitorManager } from "../tools/yield_farming/auto_balancer/GlobalMonitorManager";
-import { UserMonitorManager } from "../tools/yield_farming/auto_balancer/UserMonitorManager";
 import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderModel, TransactionModel } from "../tools/yield_farming/database";
 
 (async () => {
@@ -20,11 +19,12 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
 
     await mongoose.connection.db.dropDatabase();
     let user = new UserModel();
-    user.email = "carlos.glvn93@gmail.com";
-    user.password = "$2a$10$BG2eOb.fSdBJ2FyYOW4/Mu3HmFuyViyg8fLAH4FQslXM8KMzSJtdK";
+    user.email = "carlosglvn93@gmail.com";
+    user.password = "$2a$10$c.WR8hd9H10mmBM3U2qdnuCuZU8pjVeadXn4xQT2ei/Er/woz4pOm";
     await user.save();
 
     let ftxExchangeCredentials = new FTXExchangeCredentialsModel({
+        _user: user._id,
         apikey: "oKWf56Z7PAhKa8C8Czb_-zEz1I4YgKll5FeeA1SL",
         apisecret: "l0LkQM3VG8YBR-ZmdZTw3UK0iOCf4zzefnlPzCmp",
         subaccounts: []
@@ -32,6 +32,7 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
     await ftxExchangeCredentials.save();
 
     let binanceExchangeCredentials = new BinanceExchangeCredentialsModel({
+        _user: user._id,
         apikey: "KegqqA6UmAbghdvGANym0fzNBU9XImCLYHxd9F4e68lgnHAgfy0Z2nopBPnOXnNS",
         apisecret: "9IdcgEo1zyDN1jZkRsVoXQEfUEauNV3kqSU9EdPVFeIj9VRegGvonCT5DdAknSWV"
     });
@@ -44,16 +45,17 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
             {
                 exchangeCredentials: ftxExchangeCredentials._id,
                 market: "BAL-PERP",
-                tradeSymbol:"BAL",
+                tradeSymbol: "BAL",
                 orderDistributionPercentage: .5
             },
             {
                 exchangeCredentials: binanceExchangeCredentials._id,
                 market: "BALUSDT",
-                tradeSymbol:"BAL",
+                tradeSymbol: "BAL",
                 orderDistributionPercentage: .5
             }
         ],
+        tag: "diet snapple",
         tradeSettings: {
             tradeMinimumAmount: 0,
             tradeMaxminumAmount: .5,
@@ -73,6 +75,7 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
     monitorUser.monitors?.push(monitor._id);
     monitorUser.exchangeCredentials?.push(ftxExchangeCredentials._id);
     await monitorUser.save();
+    logger.log("2")
 
     GlobalMonitorManager.initiliaze(
         MonitorUserModel,
@@ -82,9 +85,9 @@ import { Monitor, MonitorModel, MonitorStatus, MonitorUserModel, PendingOrderMod
         PendingOrderModel
     );
 
-    let manager = new UserMonitorManager(
-        monitorUser._user!.toString()
-    )
+    // let manager = new UserMonitorManager(
+    //     monitorUser._user!.toString()
+    // )
 
 })()
 

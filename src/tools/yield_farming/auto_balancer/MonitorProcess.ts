@@ -11,7 +11,8 @@ import {
     DeltaZeroMessage, UnexpectedErrorMessage, BadConfigurationErrorMessage,
     TradeLimitReachedErrorMessage, HeartbeatMilliSeconds, HeartbeatMessage,
     ErrorMessageInterface,
-    MonitorHasPendingOrderErrorMessage
+    MonitorHasPendingOrderErrorMessage,
+    MonitorPositionMessage
 } from "./MonitorProcessInterfaces";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -88,11 +89,8 @@ export class MonitorProcess {
     }
 
     private async tryPlaceDistributedOrderAsync(amount: number, side: TransactionsSide) {
-        let batchId: string | undefined = undefined;
-
-        if (MonitorProcess._self._exchanges.length > 1) {
-            batchId = uuidv4();
-        }
+        let batchId: string | undefined = uuidv4();
+        let transactions: Transaction[] = [];
         let carryOver = 0;
         for (let i = 0; i < MonitorProcess._self._exchanges.length; i++) {
             let exchangeObj = MonitorProcess._self._exchanges[i];
@@ -102,24 +100,28 @@ export class MonitorProcess {
             carryOver = ordersize - preciseOrderSize;
             if (preciseOrderSize > 0) {
                 await exchangeObj.exchange!.tryPlaceFuturesMarketOrderAsync(preciseOrderSize, side, exchangeObj.market);
-                let exchangeCredentials = { ...exchangeObj } as MonitorExchanges;
-                delete exchangeCredentials.exchange;
+                let exchangeData = { ...exchangeObj } as MonitorExchanges;
+                delete exchangeData.exchange;
 
                 let transaction = {} as Transaction;
                 transaction.transactionBatchId = batchId;
                 transaction.orderDistributionPercentage = orderDistributionPercentage;
-                transaction.exchangeCredentials = exchangeCredentials;
+                transaction.exchangeData = exchangeData;
                 transaction._monitor = MonitorProcess._self._monitor._id;
                 transaction.side = side;
                 transaction.size = preciseOrderSize;
-
-                MonitorProcess._self.SendMessage({
-                    action: "messageout",
-                    type: "success",
-                    body: new NewTransactionMessage(transaction)
-                })
+                transactions.push(transaction);
             }
         }
+
+        transactions.forEach(transaction => {
+            transaction.batchSize = transactions.length;
+            MonitorProcess._self.SendMessage({
+                action: "messageout",
+                type: "success",
+                body: new NewTransactionMessage(transaction)
+            })
+        })
     }
 
     private static handleError(message: MonitorMessageInterface<ErrorMessageInterface>) {
@@ -127,7 +129,7 @@ export class MonitorProcess {
         MonitorProcess._self._stopFlag = true;
         MonitorProcess._self._errorFlag = true;
     }
-    
+
     private exitProcess() {
         if (!MonitorProcess._self._errorFlag) {
             MonitorProcess._self.SendMessage({
@@ -162,6 +164,13 @@ export class MonitorProcess {
                 let position = +rawPosition.toFixed(MonitorProcess._self._maxPrecision);
                 let delta = +(hedgeTarget + position);
                 let absDelta = Math.abs(delta);
+
+                MonitorProcess._self.SendMessage({
+                    action: "messageout",
+                    type: "success",
+                    body: new MonitorPositionMessage(rawHedgeTarget)
+                });
+
                 if (absDelta > tradeMin) {
                     if (absDelta <= stopMax) {
                         if (delta > 0) {
@@ -173,7 +182,7 @@ export class MonitorProcess {
                         let pendingOrder = {} as PendingOrder;
                         pendingOrder._monitor = MonitorProcess._self._monitor._id,
                             pendingOrder.ordersize = absDelta,
-                            pendingOrder.side = (delta > 0) ? TransactionsSide.Buy : TransactionsSide.Sell
+                            pendingOrder.side = (delta > 0) ? TransactionsSide.Sell : TransactionsSide.Buy
                         MonitorProcess.handleError({
                             action: "messageout",
                             type: "error",
@@ -191,7 +200,6 @@ export class MonitorProcess {
                     });
                 }
             } catch (e) {
-                let error = JSON.stringify(e);
                 MonitorProcess.handleError({
                     action: "messageout",
                     type: "error",
@@ -248,57 +256,68 @@ export class MonitorProcess {
             })
             return MonitorProcess._self.exitProcess();
         }
+        try {
+            // Get contract interface
+            MonitorProcess._self._contract = new YFSmartContractFactory(MonitorProcess._self._monitor.web3HttpConnectionString)
+                .getYFSmartContract(
+                    MonitorProcess._self._monitor.contractName,
+                    MonitorProcess._self._monitor.contractAddress
+                );
 
-        // Get contract interface
-        MonitorProcess._self._contract = new YFSmartContractFactory(MonitorProcess._self._monitor.web3HttpConnectionString)
-            .getYFSmartContract(
-                MonitorProcess._self._monitor.contractName,
-                MonitorProcess._self._monitor.contractAddress
-            );
+            // Map exchanges
+            MonitorProcess._self._exchanges = initparamaters.monitorExchangeCredentials
+                .map(exchangeCredentials => {
+                    let exchange = undefined;
+                    let monitorExchangeCredentials = initparamaters.monitor.exchangeData.filter(
+                        cred => {
+                            let id = cred.exchangeCredentials instanceof ExchangeCredentials ? cred.exchangeCredentials._id : cred.exchangeCredentials;
+                            return id === exchangeCredentials._id
+                        }
+                    ).pop();
 
-        // Map exchanges
-        MonitorProcess._self._exchanges = initparamaters.monitorExchangeCredentials
-            .map(exchangeCredentials => {
-                let exchange = undefined;
-                let monitorExchangeCredentials = initparamaters.monitor.exchangeData.filter(
-                    cred => {
-                        let id = cred.exchangeCredentials instanceof ExchangeCredentials ? cred.exchangeCredentials._id : cred.exchangeCredentials;
-                        return id === exchangeCredentials._id
+                    if (monitorExchangeCredentials) {
+                        switch (exchangeCredentials.exchangeName) {
+                            case ExchangeNames.BINANCE:
+                                exchange = new BinanceExchange(
+                                    exchangeCredentials.apikey!,
+                                    exchangeCredentials.apisecret!
+                                )
+                                break;
+                            case ExchangeNames.FTX:
+                                let ftxMonitorExchangeCredentials = monitorExchangeCredentials as FTXMonitorExchangeCredentials;
+                                exchange = new FTXExchange(
+                                    exchangeCredentials.apikey!,
+                                    exchangeCredentials.apisecret!,
+                                    ftxMonitorExchangeCredentials.subaccount
+                                )
+                                break;
+                            default:
+                                throw exchangeCredentials.exchangeName + "Not recognized";
+                        }
+
+                        return {
+                            exchange: exchange,
+                            ...monitorExchangeCredentials,
+                        }
                     }
-                ).pop();
 
-                if (monitorExchangeCredentials) {
-                    switch (exchangeCredentials.exchangeName) {
-                        case ExchangeNames.BINANCE:
-                            exchange = new BinanceExchange(
-                                exchangeCredentials.apikey!,
-                                exchangeCredentials.apisecret!
-                            )
-                            break;
-                        case ExchangeNames.FTX:
-                            let ftxMonitorExchangeCredentials = monitorExchangeCredentials as FTXMonitorExchangeCredentials;
-                            exchange = new FTXExchange(
-                                exchangeCredentials.apikey!,
-                                exchangeCredentials.apisecret!,
-                                ftxMonitorExchangeCredentials.subaccount
-                            )
-                            break;
-                        default:
-                            throw exchangeCredentials.exchangeName + "Not recognized";
-                    }
+                    throw "monitorExchangeCredentials not found";
+                });
 
-                    return {
-                        exchange: exchange,
-                        ...monitorExchangeCredentials,
-                    }
-                }
-
-                throw "monitorExchangeCredentials not found";
+            // Precision
+            MonitorProcess._self._exchanges.sort((a, b) => a.exchange!.orderPrecision - b.exchange!.orderPrecision);
+            MonitorProcess._self._maxPrecision = MonitorProcess.getMaxOrderPrecision();
+        } catch (e) {
+            MonitorProcess.handleError({
+                action: "messageout",
+                type: "error",
+                body: new BadConfigurationErrorMessage(
+                    "An error occured while initializing the monitor, this is most likely caused by a bad configuration, please delete the monitor and recreate with the correct data." +
+                    `\n Original error: ${e.message}`
+                )
             });
-
-        // Precision
-        MonitorProcess._self._exchanges.sort((a, b) => a.exchange!.orderPrecision - b.exchange!.orderPrecision);
-        MonitorProcess._self._maxPrecision = MonitorProcess.getMaxOrderPrecision();
+            MonitorProcess._self.exitProcess();
+        }
         // Start monitor loop
         MonitorProcess._self.LoopBody();
     }

@@ -53,10 +53,9 @@ export enum MonitorStatus {
 export interface Transaction extends Base { }
 export class Transaction extends TimeStamps {
     @prop({
-        type: MonitorExchangeCredentials, _id: false
+        type: FTXMonitorExchangeCredentials, _id: false
     })
-    public exchangeCredentials!: FTXMonitorExchangeCredentials | MonitorExchangeCredentials;
-
+    public exchangeData!: FTXMonitorExchangeCredentials | MonitorExchangeCredentials;
     @prop({ ref: 'Monitor' })
     public _monitor!: Ref<Monitor>;
 
@@ -68,6 +67,9 @@ export class Transaction extends TimeStamps {
 
     @prop({ default: undefined })
     public transactionBatchId?: string;
+
+    @prop()
+    public batchSize!: number;
 
     @prop({ default: 1 })
     public orderDistributionPercentage!: number;
@@ -83,6 +85,10 @@ export class PendingOrder extends TimeStamps {
 
     @prop({ enum: TransactionsSide })
     public side!: TransactionsSide;
+
+    @prop({ default: false })
+    public resolved!: boolean;
+
 }
 
 
@@ -105,6 +111,9 @@ export class Monitor extends TimeStamps {
     @prop({ type: MonitorTradeSettings, _id: false })
     public tradeSettings!: MonitorTradeSettings;
 
+    @prop({ required: true })
+    public tag!: string;
+
     @prop({ enum: ContractEnum, required: true })
     public contractName!: ContractEnum;
 
@@ -117,18 +126,28 @@ export class Monitor extends TimeStamps {
     @prop()
     public walletAddress!: string;
 
+    @prop({ default: 0 })
+    public lastKnownAssetBalance!: number;
+
     @prop()
     public targetAssetAddress!: string;
 
     @prop({ enum: MonitorStatus })
     public status!: MonitorStatus;
 
+    @prop()
+    public lastMessageRecieved?: number;
+
+    @prop()
+    public lastMessage?: string;
+
     @prop({ ref: 'Transaction' })
     public transactions?: Ref<Transaction>[];
-
+    public get transactionsCount() { return this.transactions?.length; }
     static validate(m: Partial<Monitor>): string[] {
         let missingFields =
             ValidateRequiredFields(m, [
+                "tag",
                 "exchangeData",
                 "tradeSettings",
                 "tradeSettings.tradeMinimumAmount",
@@ -139,7 +158,7 @@ export class Monitor extends TimeStamps {
                 "web3HttpConnectionString",
                 "walletAddress",
                 "targetAssetAddress"
-            ])
+            ]);
         return missingFields.map(m => m + ":required");
     }
 
@@ -156,19 +175,6 @@ export class MonitorUser extends TimeStamps {
     public exchangeCredentials?: Ref<ExchangeCredentials>[]
 }
 
-/**
-    interface MonitorUserDocument extends BaseExtention {} 
-    class MonitorUserDocument extends MonitorUser{}
-
-    export interface TransactionDocument extends BaseExtention {} 
-    export class TransactionDocument extends Transaction{}
-
-
-    export interface MonitorDocument extends BaseExtention {} 
-    export class MonitorDocument extends Monitor{} 
-*/
-
-// public nest: Nested;
 //#endregion
 export const MonitorUserModel: MongooseModel<MonitorUser> = getModelForClass(MonitorUser);
 export const TransactionModel: MongooseModel<Transaction> = getModelForClass(Transaction);
