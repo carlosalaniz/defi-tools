@@ -10,6 +10,8 @@ import { StaticController } from "./controllers/StaticController";
 import { ApiYieldfarmingMonitorController } from "./controllers/yieldfarming/ApiYieldfarmingMonitorController";
 import { ApiExchangeController } from "./controllers/ApiExchangeController";
 import { YieldFarmingStaticController } from "./controllers/yieldfarming/YieldFarmingStaticController";
+import { register as regiterDatabase } from "../lib/common/database";
+import { register as regiterYFDatabase} from "../tools/yield_farming/database";
 
 export default (async () => {
     // Connect to Database.
@@ -19,6 +21,9 @@ export default (async () => {
             useNewUrlParser: true,
             useUnifiedTopology: true
         });
+
+    await regiterDatabase();
+    await regiterYFDatabase();
 
     const router = express.Router();
     const app = express();

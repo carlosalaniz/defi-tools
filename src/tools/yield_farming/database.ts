@@ -181,3 +181,11 @@ export const TransactionModel: MongooseModel<Transaction> = getModelForClass(Tra
 export const MonitorModel: MongooseModel<Monitor> = getModelForClass(Monitor);
 export const PendingOrderModel: MongooseModel<PendingOrder> = getModelForClass(PendingOrder);
 export const MonitorReportModel: MongooseModel<MonitorReport> = getModelForClass(MonitorReport);
+
+export async function register(){
+    await MonitorUserModel.createCollection();
+    await TransactionModel.createCollection();
+    await MonitorModel.createCollection();
+    await PendingOrderModel.createCollection();
+    await MonitorReportModel.createCollection();
+}
