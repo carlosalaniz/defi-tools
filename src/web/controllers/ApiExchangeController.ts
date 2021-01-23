@@ -1,10 +1,7 @@
 
-import { NextFunction, Request, Response, Router } from "express";
-import { Types } from "mongoose";
-import { BinanceExchangeCredentials, ExchangeCredentials, ExchangeCredentialsModel, FTXExchangeCredentials, UserModel } from "../../lib/common/database";
-import { Monitor, MonitorModel, MonitorUserModel } from "../../tools/yield_farming/database";
-import { AutenticationHelpers } from "../common/AuthenticationHelpers";
-import { AuthenticatedRequest, BasicAuthMW, validateUser as authenticateUser } from "../middleware/authentication";
+import { Response, Router } from "express";
+import { BinanceExchangeCredentials, ExchangeCredentials, ExchangeCredentialsModel, FTXExchangeCredentials } from "../../lib/common/database";
+import { AuthenticatedRequest, BasicAuthMW } from "../middleware/authentication";
 import { ControllerInterface } from "./ControllerInterface";
 
 export class ApiExchangeController extends ControllerInterface {

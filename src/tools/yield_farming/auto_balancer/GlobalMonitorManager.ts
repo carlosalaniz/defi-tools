@@ -5,7 +5,7 @@ import { ExchangeCredentials, MongooseModel } from '../../../lib/common/database
 import defer from '../../../lib/common/defer';
 import { logger } from '../../../lib/common/logger';
 import { Monitor, MonitorStatus, MonitorUser, PendingOrder, Transaction } from '../database';
-import { MonitorMessageInterface, EmitMessageInterface, MessageTypeEnum, InitMessage, MonitorErrorsEnum, UnexpectedErrorMessage, TradeLimitReachedErrorMessage, BadConfigurationErrorMessage, NewTransactionMessage, HeartbeatMilliSeconds, StopMessage } from './MonitorProcessInterfaces';
+import { MonitorMessageInterface, EmitMessageInterface, MessageTypeEnum, InitMessage, MonitorErrorsEnum, UnexpectedErrorMessage, TradeLimitReachedErrorMessage, BadConfigurationErrorMessage, NewTransactionMessage, HeartbeatMilliSeconds, StopMessage, MonitorPositionMessage } from './MonitorProcessInterfaces';
 
 export async function getMonitorAndExchanges(mref: Monitor | string | Types.ObjectId | undefined) {
     const _globalMonitorManager = GlobalMonitorManager.getInstance();
@@ -27,22 +27,11 @@ export async function getMonitorAndExchanges(mref: Monitor | string | Types.Obje
     }
 };
 
-export async function getUserMonitors(_id: string): Promise<{ monitor: Monitor, exchangeCredentials: ExchangeCredentials[] }[] | null> {
-    const _globalMonitorManager = GlobalMonitorManager.getInstance();
-    let user = await _globalMonitorManager.UserModel!.findOne({ _user: _id }).exec()
-
-    if (user) {
-        return await Promise.all(user.monitors!.map(
-            async mref => await getMonitorAndExchanges(mref) as { monitor: Monitor, exchangeCredentials: ExchangeCredentials[] }
-        ));
-    }
-    return null;
-};
-
 export class GlobalMonitorManager {
     private static _heartbeatTimeoutMilliSeconds = HeartbeatMilliSeconds + 5000;
     public static instance?: GlobalMonitorManager;
-    public static _healthcheckTimoutSeconds = 60;
+    static waitForMonitorReply: Promise<unknown> & { resolve: any; reject: any; };
+    public static _healthcheckTimoutSeconds = 30;
     private _globalMonitorRegistry: {
         [key: string]:
         {
@@ -66,12 +55,11 @@ export class GlobalMonitorManager {
 
     private startMonitorHealthCheckInterval() {
         return setInterval(async () => {
-            for (let processkey in GlobalMonitorManager.instance!._globalMonitorRegistry) {
-                let process = GlobalMonitorManager.instance!._globalMonitorRegistry[processkey];
+            for (let mref in GlobalMonitorManager.instance!._globalMonitorRegistry) {
+                let process = GlobalMonitorManager.instance!._globalMonitorRegistry[mref];
                 let timeDelta = (+Date.now()) - process.lastSeen;
                 if (timeDelta >= GlobalMonitorManager._heartbeatTimeoutMilliSeconds) {
-                    let monitorExchanges = await getMonitorAndExchanges(processkey);
-                    GlobalMonitorManager.instance!.forkMonitorAsync(monitorExchanges!.monitor, monitorExchanges!.exchangeCredentials);
+                    await GlobalMonitorManager.instance!.startMonitorAsync(mref)
                 };
             }
         }, GlobalMonitorManager._healthcheckTimoutSeconds * 1000)
@@ -104,10 +92,19 @@ export class GlobalMonitorManager {
         throw "GlobalMonitorManager is not yet initizalided";
     }
 
-    public stopMonitor(monitorId: string | Types.ObjectId) {
+    public async stopMonitorAsync(monitorId: string | Types.ObjectId) {
         const monitor = GlobalMonitorManager.instance?._globalMonitorRegistry[monitorId.toString()]
         if (monitor) {
             monitor.process.send(new StopMessage());
+            GlobalMonitorManager.waitForMonitorReply = defer();
+            await GlobalMonitorManager.waitForMonitorReply;
+        }
+    }
+
+    public async startMonitorAsync(monitorId: string | Types.ObjectId) {
+        let m = await getMonitorAndExchanges(monitorId);
+        if (m) {
+            return await GlobalMonitorManager.instance!.forkMonitorAsync(m.monitor, m.exchangeCredentials);
         }
     }
 
@@ -131,6 +128,9 @@ export class GlobalMonitorManager {
             }
         });
         await waitForMonitorReply;
+        let monitorRecord = await this.MonitorModel.findById(monitor._id).exec();
+        monitorRecord!.status = MonitorStatus.Running;
+        await monitorRecord!.save();
         await GlobalMonitorManager.instance!.OnMonitorStartedMessageAsync(monitorInstance, monitor, exchangeCredentials);
         monitorInstance.on("message", GlobalMonitorManager.instance!.OnMessageRecievedAsync);
         let _globalMonitorRegistry = GlobalMonitorManager.instance!._globalMonitorRegistry;
@@ -146,16 +146,23 @@ export class GlobalMonitorManager {
     //#region EventHandlers
     private async OnMessageRecievedAsync(message: MonitorMessageInterface<EmitMessageInterface>) {
         logger.debug(message);
+        let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(message._monitorId).exec();
+        monitor!.lastMessageRecieved = +new Date();
         if (message.type === "success") {
             switch (message.body.type as MessageTypeEnum) {
                 case MessageTypeEnum.Heartbeat:
                     GlobalMonitorManager.instance!.OnMonitorHeartbeatMessage(message._monitorId!);
                     break;
                 case MessageTypeEnum.MonitorStoped:
-                    GlobalMonitorManager.instance!.OnMonitorStoppedMessageAsync(message._monitorId!);
+                    monitor!.lastMessage = "";
+                    await GlobalMonitorManager.instance!.OnMonitorStoppedMessageAsync(message._monitorId!);
                     break;
                 case MessageTypeEnum.DeltaZero:
                     GlobalMonitorManager.instance!.OnDeltaZeroMessage(message._monitorId!);
+                    break;
+                case MessageTypeEnum.MonitorPositionMessage:
+                    const _positionMessage = message.body as MonitorPositionMessage;
+                    await GlobalMonitorManager.instance!.OnPositionMessageAsync(message._monitorId!, _positionMessage);
                     break;
                 case MessageTypeEnum.NewTransaction:
                     const _newTransactionMessage = message.body as NewTransactionMessage;
@@ -172,12 +179,26 @@ export class GlobalMonitorManager {
                     break;
                 case MonitorErrorsEnum.BadConfiguration:
                     const _badConfigurationErrorMessage = message.body as BadConfigurationErrorMessage;
+                    monitor!.lastMessage = _badConfigurationErrorMessage.payload as string;
                     await GlobalMonitorManager.instance!.OnBadConfigurationError(message._monitorId!, _badConfigurationErrorMessage);
                     break;
                 case MonitorErrorsEnum.UnexpectedError:
                     const _unexpectedErrorMessage = message.body as UnexpectedErrorMessage;
+                    monitor!.lastMessage = _unexpectedErrorMessage.payload as string;
                     await GlobalMonitorManager.instance!.OnUnExpectedErrorAsync(message._monitorId!, _unexpectedErrorMessage);
             }
+        }
+        await monitor!.save();
+    }
+
+    async OnMessageAsync(_monitorId: string, message: MonitorMessageInterface<EmitMessageInterface>) {
+        let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
+        if (monitor) {
+            monitor.lastMessageRecieved = +new Date();
+            if (message.body.type !== MessageTypeEnum.Heartbeat) {
+                monitor.lastMessage = message.body.payload;
+            }
+            await monitor.save();
         }
     }
 
@@ -201,7 +222,7 @@ export class GlobalMonitorManager {
     private async OnMonitorStartedMessageAsync(child: ChildProcess, monitor: Monitor, exchangeCredentials: ExchangeCredentials[]) {
         logger.log("Process started");
         let pendingOrders = await GlobalMonitorManager.instance!.PendingOrderModel.find(
-            { _monitor: monitor._id }
+            { _monitor: monitor._id, resolved: false }
         ).exec();
         // send message to initiliaze monitor process
         child.send(new InitMessage({
@@ -219,10 +240,18 @@ export class GlobalMonitorManager {
             await monitor.save();
             delete GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId];
         }
+        GlobalMonitorManager.waitForMonitorReply.resolve();
     }
 
     private OnDeltaZeroMessage(_monitorId: string) {
         logger.log("Delta Zero", _monitorId);
+    }
+    private async OnPositionMessageAsync(_monitorId: string, positionMessage: MonitorPositionMessage) {
+        let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
+        if (monitor) {
+            monitor.lastKnownAssetBalance = positionMessage.payload;
+            await monitor.save();
+        }
     }
 
     private async OnNewTransactionMessageAsync(_monitorId: string, transaction: NewTransactionMessage) {
@@ -230,7 +259,7 @@ export class GlobalMonitorManager {
         try {
             let newTransaction = new GlobalMonitorManager.instance!.TransactionModel(transaction.payload);
             await newTransaction.save();
-            let monitor =  await GlobalMonitorManager.instance!.MonitorModel.findById(transaction.payload._monitor).exec()
+            let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(transaction.payload._monitor).exec()
             monitor?.transactions?.push(newTransaction._id);
             await monitor!.save();
         } catch (e) {
@@ -262,6 +291,11 @@ export class GlobalMonitorManager {
 
     private async OnUnExpectedErrorAsync(_monitorId: string, message: UnexpectedErrorMessage) {
         logger.log("OnUnExpectedErrorAsync", _monitorId, message);
+        let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
+        if (monitor) {
+            monitor.status = MonitorStatus.Stopped;
+            await monitor.save();
+        }
         logger.log(`Monitor will attempt to restart in ${GlobalMonitorManager._healthcheckTimoutSeconds} seconds...`)
     }
     //#endregion

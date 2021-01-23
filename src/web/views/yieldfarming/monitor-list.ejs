@@ -1,0 +1,382 @@
+<%- include('../partials/top') -%>
+    <div class="container">
+        <div class="row">
+            <div class="column">
+                <h3 class="float-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="24" fill="currentColor"
+                        class="tag bi bi-arrow-left-right" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z" />
+                    </svg>
+                    HEDGE MONITORS
+                </h3>
+                <a onclick="newMonitor.showForm = true" class="float-right button button-outline gray">Create new
+                    monitor</a>
+            </div>
+        </div>
+        <div v-if="showForm" id="newMonitor" @keydown.esc="console.log(1)">
+            <div class="container form-container">
+                <div class="row">
+                    <div class="column column-50">
+                        <p><b>NEW MONITOR</b></p>
+                        <form ref="monitorData" @submit.prevent="addMonitor()">
+                            <fieldset>
+                                <div v-for="(value, key) in formFields">
+                                    <!-- <div v-if="/</.test(value)" v-html="value"></div> -->
+                                    <div v-if="value === 'text'">
+                                        <label :for="key">{{key}}</label>
+                                        <input required type="text" :id="key" :name="key">
+                                    </div>
+                                    <div v-if="value === 'number'">
+                                        <label :for="key">{{key}}</label>
+                                        <input required type="number" step=".001" :id="key" :name="key">
+                                    </div>
+                                    <div v-if="Array.isArray(value)">
+                                        <label :for="key">{{key}}</label>
+                                        <select required :id="key" :name="key">
+                                            <option v-for="v in value" :value="v">{{v}}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <label>-</label>
+                                <input type="submit" class="button button-outline gray" value="Add Monitor">
+                            </fieldset>
+                        </form>
+                    </div>
+
+                    <div class="column column-50">
+                        <form ref="exchangeData" @submit.prevent="addExchangeData()">
+                            <div v-for="(value, key) in nestedFormFields">
+                                <p><b>{{key.toUpperCase()}}</b></p>
+                                <fieldset>
+                                    <div v-for="(v, k) in value">
+                                        <div v-if="v === 'text' && 
+                                        (k === 'subaccount' ? exchangeDataSelectedEx === 'ftx'
+                                        : true)">
+                                            <label :for="k">{{k}}</label>
+                                            <input :required="k!='subaccount'" type="text" :id="k" :name="k">
+                                        </div>
+                                        <div v-if="v === 'number'">
+                                            <label :for="k">{{k}}</label>
+                                            <input required type="number" step="1" :id="k" :name="k">
+                                        </div>
+                                        <div v-if="Array.isArray(v)">
+                                            <label :for="k">{{k}}</label>
+                                            <select v-on:change="
+                                                    k==='exchange' ?
+                                                    exchangeDataSelectedEx = $event.target.value
+                                                    : null
+                                                " required :id="k" :name="k">
+                                                <label :for="k">{{k}}</label>
+                                                <option v-for="va in v" :value="va">{{va}}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <label>-</label>
+                                    <input type="submit" class="button button-outline gray" :value="'Add '+key">
+                                </fieldset>
+                            </div>
+                        </form>
+
+                        <div class="container">
+                            <div class="row">
+                                <div class="column">
+                                    <table>
+                                        <thead>
+                                            <th>exchange</th>
+                                            <th>key</th>
+                                            <th>secret</th>
+                                            <th>trade symbol</th>
+                                            <th colspan="2">%</th>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(exData, i) in monitor.exchangeData">
+                                                <td>{{exData.exchange}}</td>
+                                                <td>...{{exData.apikey.slice(-4)}}</td>
+                                                <td>...{{exData.apisecret.slice(-4)}}</td>
+                                                <td>{{exData.tradeSymbol}}</td>
+                                                <td>{{exData.orderDistributionPercentage}}</td>
+                                                <td><a href="#" v-on:click="monitor.exchangeData.splice(i,1)">delete</a>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container" id="monitor_list" style=" word-break: break-all;">
+        <div v-for="monitor in monitors" :key="monitor._id">
+            <div v-bind:class="getClass(monitor.status)">
+                <div class="row">
+                    <div class="column">
+                        <div class="action">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                class="tag bi bi-arrow-left-right" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd"
+                                    d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z" />
+                            </svg>
+                            <a href="#" class="tag">{{monitor.tag.toUpperCase()}}</a>
+
+                            <div class="float-right">
+                                <div><b>Last update:</b> {{monitor.lastMessageRecievedLocal.toLocaleString()}}</div>
+                            </div>
+
+                        </div>
+                        <b>Contract:</b> {{monitor.contractName.toUpperCase()}}<br>
+                        <b>Last known asset balance:</b> {{monitor.lastKnownAssetBalance.toFixed(2)}}<br>
+                        <b>Wallet address:</b> {{monitor.walletAddress}}<br>
+                        <b>Contract address:</b> {{monitor.contractAddress}}<br>
+                        <b>Target asset address:</b> {{monitor.targetAssetAddress}}<br>
+                        <b>WEB3 HTTP connection:</b> {{monitor.web3HttpConnectionString}}<br>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="column">
+                        <b>Min trade:</b> {{monitor.tradeSettings.tradeMinimumAmount}} |
+                        <b>Max trade:</b> {{monitor.tradeSettings.tradeMaxminumAmount}} |
+                        <b>Refresh rate:</b> {{monitor.tradeSettings.refreshRateSeconds}} seconds <br>
+
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="column">
+                        <table style="margin-top: 0;">
+                            <thead>
+                                <th>Exchange name</th>
+                                <th>Distribution %</th>
+                                <th>Market</th>
+                            </thead>
+                            <tbody>
+                                <tr v-for="exchangeData in monitor.exchangeData">
+                                    <td>{{exchangeData.exchangeCredentials.exchangeName}}</td>
+                                    <td>{{exchangeData.orderDistributionPercentage*100}}%</td>
+                                    <td>{{exchangeData.market}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="column">
+                        <div id="navbar" class='navbar navbar-justify'>
+                            <ul>
+                                <li>
+                                    <a
+                                        :href="'<%=site.app_routing_prefix%>/yf/monitor/' + monitor._id+ '/transactions'">Transactions
+                                        ( {{monitor.transactionsCount}} )</a>
+                                </li>
+                                <li>
+                                    <a
+                                        :href="'<%=site.app_routing_prefix%>/yf/monitor/' + monitor._id+ '/reports'">Reports</a>
+                                </li>
+                                <li>
+                                    <a v-on:click="toggleStates(monitor._id)" href="#">Toggle monitor</a>
+                                </li>
+                                <li v-if="monitor.openOrders && monitor.openOrders.length > 0"
+                                    class="pending-order-button">
+                                    <a v-on:click="monitor.showOpenOrder = !monitor.showOpenOrder" href="#">Show pending
+                                        order</a>
+                                </li>
+                                <li>
+                                    <a v-on:click="deleteMonitor(monitor._id)" class="danger" href="#">Delete
+                                        monitor</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="row" v-show="monitor.showOpenOrder">
+                    <div class="column"></div>
+                    <div class="column">
+                        <table style="margin-top: 0;">
+                            <thead>
+                                <th>Size</th>
+                                <th>Side</th>
+                                <th colspan="2">Date</th>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(openOrder,i) in monitor.openOrders" :key="i">
+                                    <td>{{openOrder.ordersize.toFixed(2)}}</td>
+                                    <td>{{openOrder.side.toUpperCase()}}</td>
+                                    <td>{{new Date(openOrder.createdAt).toLocaleString()}}</td>
+                                    <td><button v-on:click="resolvePendingOrder(monitor._id, openOrder._id)"
+                                            class="float-right">Resolve</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+                </div>
+                <span
+                    v-if="!/running|haspendingorders/.test(monitor.status) && monitor.lastMessage && monitor.lastMessage.length > 0"
+                    class="tag">
+                    <br>
+                    {{monitor.lastMessage}}
+                </span>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let newMonitor = new Vue({
+            el: "#newMonitor",
+            data: {
+                console: console,
+                exchangeDataSelectedEx: "",
+                showForm: false,
+                nestedFormFields: {
+                    exchangeData: {
+                        exchange: ["select an exchange", "ftx", "binance"],
+                        apikey: "text",
+                        apisecret: "text",
+                        subaccount: "text",
+                        market: "text",
+                        tradeSymbol: "text",
+                        orderDistributionPercentage: "number"
+                    }
+                },
+                formFields: {
+                    tag: "text",
+                    tradeMinimumAmount: "number",
+                    tradeMaxminumAmount: "number",
+                    refreshRateSeconds: "number",
+                    contractName: ["select a protocol", "balancer", "1inch"],
+                    contractAddress: "text",
+                    web3HttpConnectionString: "text",
+                    walletAddress: "text",
+                    targetAssetAddress: "text",
+
+                },
+                monitor: {
+                    exchangeData: []
+                }
+            },
+            methods: {
+                addExchangeData() {
+                    let form = new FormData(this.$refs.exchangeData);
+                    this.monitor.exchangeData.push(
+                        [...form.entries()].reduce((o, p) => { o[p[0]] = p[1]; return o; }, {})
+                    );
+                    this.$refs.exchangeData.reset();
+                },
+                async addMonitor() {
+                    loading.show = true;
+                    let form = new FormData(this.$refs.monitorData);
+                    let monitorForm = [...form.entries()].reduce((o, p) => { o[p[0]] = p[1]; return o; }, {});
+                    let monitorDO = {
+                        tag: monitorForm.tag,
+                        exchangeData: this.monitor.exchangeData,
+                        tradeSettings: {
+                            tradeMinimumAmount: monitorForm.tradeMinimumAmount,
+                            tradeMaxminumAmount: monitorForm.tradeMaxminumAmount,
+                            refreshRateSeconds: monitorForm.refreshRateSeconds,
+                        },
+                        contractName: monitorForm.contractName,
+                        contractAddress: monitorForm.contractAddress,
+                        web3HttpConnectionString: monitorForm.web3HttpConnectionString,
+                        walletAddress: monitorForm.walletAddress,
+                        targetAssetAddress: monitorForm.targetAssetAddress
+                    }
+                    console.log(JSON.stringify(monitorDO, null, 2));
+                    let response = await apiclient.post(`/api/yf/monitor`, monitorDO);
+                    this.$refs.monitorData.reset();
+                    this.$refs.exchangeData.reset();
+                    loading.show = false;
+                    await monitor_list.getMonitors();
+                    this.showForm = false;
+                },
+                getCurrentExchangeOnData() {
+                    let form = new FormData(this.$refs.exchangeData);
+                    return form.get("exchange");
+                }
+            }
+        });
+
+        let monitor_list = new Vue({
+            el: '#monitor_list',
+            data: {
+                monitors: []
+            },
+            methods: {
+                async toggleStates(id) {
+                    let monitor = this.monitors.filter(m => m._id === id).pop();
+                    if (confirm("Are you sure you want to toggle monitor " + monitor.tag)) {
+                        loading.show = true;
+                        await apiclient.post(`/api/yf/monitor/${id}/toggle`);
+                        console.log("done");
+
+                        //toggle
+                        await this.getMonitors();
+                        loading.show = false;
+                    }
+                },
+
+                getClass(status) {
+                    switch (status) {
+                        case "running": return "monitor-running";
+                        case "stopped":
+                        case "hasbadconfiguration":
+                            return "monitor-stopped";
+                        case "haspendingorders": return "monitor-pending";
+                    }
+                },
+                resolvePendingOrder: async function (mid, id) {
+                    loading.show = true;
+                    await apiclient.post(`api/yf/monitor/${mid}/pending-orders`, {
+                        order_id: id
+                    });
+                    await this.getMonitors();
+                    loading.show = false;
+                },
+                getMonitorLoop: async function () {
+                    await this.getMonitors();
+                    setTimeout(this.getMonitorLoop, 2000);
+                },
+                getMonitors: async function () {
+                    let monitorResponse = await apiclient.get("api/yf/monitor")
+                    await Promise.all(monitorResponse.data.map(async m => {
+                        var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+                        d.setUTCMilliseconds(m.lastMessageRecieved);
+                        m.lastMessageRecievedLocal = d
+                        if (m.status === "haspendingorders") {
+                            let pendingOrder = await apiclient.get(`api/yf/monitor/${m._id}/pending-orders`);
+                            m.openOrders = pendingOrder.data;
+                            m.showOpenOrder = false;
+                        }
+                    }))
+                    this.monitors = [];
+                    this.monitors = monitorResponse.data;
+                },
+                deleteMonitor: async function (id) {
+                    if (confirm("are you sure you want to delete monitor: " + id)) {
+                        loading.show = true;
+                        await apiclient.delete(`api/yf/monitor/${id}`);
+                        await this.getMonitors();
+                        loading.show = false;
+                    }
+                }
+            },
+            beforeMount() {
+                this.getMonitorLoop();
+            },
+        });
+        document.onkeydown = function (evt) {
+            evt = evt || window.event;
+            var isEscape = false;
+            if ("key" in evt) {
+                isEscape = (evt.key === "Escape" || evt.key === "Esc");
+            } else {
+                isEscape = (evt.keyCode === 27);
+            }
+            if (isEscape) {
+                newMonitor.showForm = false;
+            }
+        };
+    </script>
+    <%- include('../partials/bottom') -%>

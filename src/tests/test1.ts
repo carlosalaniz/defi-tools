@@ -19,7 +19,7 @@ let exchangeCredentials: FTXExchangeCredentials = {
 let monitor: Monitor = {
     _user: new mongoose.Types.ObjectId("5ffa18a9c0980552035ed1e0"),
     _id: new mongoose.Types.ObjectId("5ffa18a9c0980552035ed1e0"),
-    exchangeCredentials: [
+    exchangeData: [
         {
             exchangeCredentials: new mongoose.Types.ObjectId("5ffa189c933da736fa05d753"),
             market: "BAL-PERP",

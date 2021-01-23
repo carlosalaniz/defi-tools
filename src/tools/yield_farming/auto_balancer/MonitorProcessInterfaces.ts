@@ -15,6 +15,7 @@ export enum MessageTypeEnum {
     MonitorStoped = "MonitorStoped",
     NewTransaction = "NewTransaction",
     MonitorStarted = "MonitorStarted",
+    MonitorPositionMessage = "MonitorPositionMessage",
     DeltaZero = "DeltaZero",
     Heartbeat = "Heartbeat"
 }
@@ -58,6 +59,14 @@ export class NewTransactionMessage implements EmitMessageInterface {
 
 export class DeltaZeroMessage implements EmitMessageInterface {
     type = MessageTypeEnum.DeltaZero;
+}
+
+export class MonitorPositionMessage implements EmitMessageInterface {
+    type = MessageTypeEnum.MonitorPositionMessage;
+    payload:number;
+    constructor(position:number){
+        this.payload = position;
+    }
 }
 
 export class MonitorStoppedMessage implements EmitMessageInterface {

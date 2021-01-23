@@ -1,0 +1,25 @@
+<div id="flashmessage">
+    <div class="clearfix" 
+    v-on:click="remove(message.id)"
+    v-for="message in messages" :key="message.id" v-bind:class="message.type">
+        {{message.text}}
+    </div>
+</div>
+<script>
+    var flashmessage = new Vue({
+        el: "#flashmessage",
+        data: {
+            messages: []
+        },
+        methods: {
+            add(message) {
+                this.messages.push(
+                    { ...message, id: this.messages.length }
+                );
+            },
+            remove(index) {
+                this.messages.splice(index, 1);
+            }
+        }
+    })
+</script>

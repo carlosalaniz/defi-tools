@@ -7,8 +7,9 @@ import express, { IRouterHandler, IRouterMatcher } from "express";
 import { ApiUserController } from "./controllers/UserController";
 import path from "path";
 import { StaticController } from "./controllers/StaticController";
-import { ApiMonitorController } from "./controllers/ApiMonitorController";
+import { ApiYieldfarmingMonitorController } from "./controllers/yieldfarming/ApiYieldfarmingMonitorController";
 import { ApiExchangeController } from "./controllers/ApiExchangeController";
+import { YieldFarmingStaticController } from "./controllers/yieldfarming/YieldFarmingStaticController";
 
 export default (async () => {
     // Connect to Database.
@@ -39,8 +40,9 @@ export default (async () => {
     let routes = [
         StaticController.register(router, ""),
         ApiUserController.register(router, "/api"),
-        ApiMonitorController.register(router, "/api"),
-        ApiExchangeController.register(router, "/api")
+        ApiExchangeController.register(router, "/api"),
+        YieldFarmingStaticController.register(router, "/yf"),
+        ApiYieldfarmingMonitorController.register(router, "/api/yf"),
     ].map(controller => controller.routes);
     console.log(routes.flat());
 

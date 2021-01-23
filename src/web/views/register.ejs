@@ -1,15 +1,15 @@
 <%- include('partials/top') -%>
   <div class="container">
-    <div class="row" id="login-form">
+    <div class="row" id="register-form">
 
       <div class="column">
-        <form @submit.prevent="login">
+        <form @submit.prevent="register">
           <fieldset>
             <label for="email">Email</label>
             <input type="email" placeholder="" id="email">
             <label for="password">Password</label>
             <input type="password" placeholder="" id="password">
-            <input type="submit" value="Login">
+            <input type="submit" value="Register">
           </fieldset>
         </form>
 
@@ -17,15 +17,15 @@
     </div>
     <script>
       let regitser_form = new Vue({
-        el: '#login-form',
+        el: '#register-form',
         data: {
           error: undefined
         },
         methods: {
-          login: async function (submitEvent) {
+          register: async function (submitEvent) {
             let email = submitEvent.target.elements.email.value;
             let password = submitEvent.target.elements.password.value;
-            let response = await apiclient.post("api/login", {
+            let response = await apiclient.post("api/register", {
               email, password
             });
             if(response.status !== 200){

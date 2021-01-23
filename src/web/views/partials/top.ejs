@@ -7,18 +7,6 @@
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <meta property="og:title" content="">
-    <meta property="og:type" content="">
-    <meta property="og:url" content="">
-    <meta property="og:image" content="">
-
-    <link rel="manifest" href="site.webmanifest">
-    <link rel="apple-touch-icon" href="icon.png">
-    <!-- Place favicon.ico in the root directory -->
-
-    <link rel="stylesheet" href="css/normalize.css">
-    <link rel="stylesheet" href="css/style.css">
-
     <meta name="theme-color" content="#fafafa">
 
     <!-- Google Fonts -->
@@ -31,7 +19,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
 
     <style>
-        .navbar {
+        .underline {
             margin-bottom: 10px;
             border-bottom: 1px solid gainsboro;
         }
@@ -58,18 +46,242 @@
         }
 
         .navbar li a:hover {
-            background-color: #ab5dda;
+            background-color: #4b4b4b;
             color: white;
         }
+
+        .navbar li a.active {
+            color: #4b4b4b;
+            font-weight: bold;
+        }
+
+        .navbar li a.active:hover {
+            color: white;
+        }
+
+        .navbar-justify ul {
+            display: flex;
+            justify-content: space-around;
+            /* margin: 1em 0; */
+        }
+
+        .navbar-justify li {
+            width: 100%;
+            display: inline-block;
+            float: unset;
+        }
+
+        .navbar li a.danger {
+            padding: 14px 1px;
+            color: #ca4d4d;
+            /* font-weight: 700; */
+            /* border-left: .3rem solid #ca4d4d; */
+        }
+
+        .navbar li a.danger:hover {
+            background-color: #ca4d4d;
+            color: white;
+        }
+
+        div.error {
+            padding-left: 1em;
+            border-left: 0.3rem solid #ca4d4d;
+            color: #ca4d4d;
+            margin-bottom: 1em;
+            background-color: rgb(248, 248, 248);
+        }
+
+        div.success {
+            padding: .1em 1em;
+            border-left: 0.3rem solid #5cca4d;
+            color: #5cca4d;
+            margin-bottom: 1em;
+            background-color: rgb(248, 248, 248);
+        }
+
+        .action>a:hover {
+            border-bottom: #4b4b4b 1px solid;
+            color: #4b4b4b;
+        }
+
+        .monitor-running .tag {
+            color: #5cca4d;
+            font-weight: bold;
+        }
+
+        div.monitor-running {
+            padding: .5em 1em;
+            border-left: 0.3rem solid #5cca4d;
+            background-color: rgb(248, 248, 248);
+        }
+
+        .monitor-stopped .tag {
+            color: #ca4d4d;
+            font-weight: bold;
+        }
+
+        div.monitor-stopped {
+            padding: .5em 1em;
+            border-left: 0.3rem solid #ca4d4d;
+            background-color: rgb(248, 248, 248);
+        }
+
+        .monitor-pending .tag {
+            color: #ffd000;
+            font-weight: bold;
+        }
+
+        div.monitor-pending {
+            padding: .5em 1em;
+            border-left: 0.3rem solid #ffd000;
+            background-color: rgb(248, 248, 248);
+        }
+
+        #loading {
+            position: fixed;
+            background: rgba(0, 0, 0, .70);
+            height: 100%;
+            width: 100%;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #loading .center-fixed {
+            margin: 0 auto;
+            color: white;
+            text-align: center;
+        }
+
+        div.transaction-batch {
+            border-left: 0.3rem solid #4b4b4b;
+            padding: .5em 1em;
+            background-color: rgb(248, 248, 248);
+            margin-bottom: 1em;
+
+        }
+
+        .pending-order {
+            border-left: 0.3rem solid #4b4b4b;
+            padding: .5em 1em;
+        }
+
+        .pending-order-button {
+            background-color: #4b4b4b;
+        }
+
+        .pending-order-button a {
+            color: white !important;
+        }
+
+        #monitor_list>div {
+            margin-bottom: 2em;
+        }
+
+        .button.button-outline.gray {
+            color: #606c76;
+            border-color: #606c76;
+        }
+
+        .button.button-outline.gray:hover {
+            color: black;
+            box-shadow: 1px 1px 8px #606c76;
+            border-color: black;
+        }
+
+        #newMonitor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: rgba(0, 0, 0, .70);
+            height: 100%;
+            width: 100%;
+            overflow: scroll;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-container{
+            background-color: whitesmoke;
+            margin-top: 3rem;
+            border-radius: 3rem;
+            padding: 3rem;
+        }
     </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        let isGuestRoute = /login|register/.test(window.location);
+        if (!window.localStorage.authToken && !isGuestRoute) {
+            window.location = "<%=site.app_routing_prefix%>/login"
+        } else if (window.localStorage.authToken && isGuestRoute) {
+            window.location = "<%=site.app_routing_prefix%>/";
+        }
+
+        const apiclient = axios.create({
+            baseURL: "<%=site.app_routing_prefix%>/",
+            validateStatus: (status) => status >= 200 && status <= 403,
+            headers: { 'Authorization': 'Basic ' + window.localStorage.authToken }
+        });
+    </script>
 </head>
+
 <body>
+    <div v-if="show" class="loading" id="loading">
+        <div class="center-fixed">
+            <h1><img src="<%=site.app_routing_prefix%>/runningpepe.gif" /> LOADING ...</h1>
+        </div>
+    </div>
     <div class='container'>
-        <div class='navbar'>
+        <div id="navbar" class='navbar underline'>
             <ul>
-                <li><a class="active" href="#home">Home</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#contact">Contact</a></li>
+                <li v-if="isLoggedIn" id="index">
+                    <a v-bind:class="isActive('/')" href="<%=site.app_routing_prefix%>/">Defi tools v0.1</a>
+                </li>
+                <li v-if="!isLoggedIn" id="login">
+                    <a v-bind:class="isActive('login')" href="<%=site.app_routing_prefix%>/login">Login</a>
+                </li>
+                <li v-if="isLoggedIn" id="logout">
+                    <a v-bind:class="isActive('logout')" v-on:click="logout()" href="#">Logout</a>
+                </li>
+                <li v-if="!isLoggedIn" id="register">
+                    <a v-bind:class="isActive('register')" href="<%=site.app_routing_prefix%>/register">Register</a>
+                </li>
+                <li v-if="isLoggedIn" id="yf">
+                    <a v-bind:class="isActive('yf')" href="<%=site.app_routing_prefix%>/yf">YF Monitors</a>
+                </li>
             </ul>
         </div>
-    </div>  
+        <script>
+            new Vue({
+                el: '#navbar',
+                data: {
+                    isLoggedIn: window.localStorage.authToken
+                },
+                methods: {
+                    logout: function () {
+                        delete window.localStorage.authToken;
+                        location.reload();
+                    },
+                    isActive: function (route) {
+                        if (new RegExp(`${route}`).test(window.location.pathname)) {
+                            return "active";
+                        }
+                        return "";
+                    }
+                }
+            });
+            let loading = new Vue({
+                el: '#loading',
+                data: {
+                    show: false
+                }
+            });
+        </script>
+    </div>
+    <div class='container'>
+        <%- include('error_message') -%>
+    </div>
