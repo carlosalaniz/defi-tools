@@ -1,7 +1,7 @@
 export const logger = {
-    log: console.log,
-    warn: console.warn,
-    error: console.error,
-    info: console.log,
-    debug: console.log
+    log: function (...args: any[]) { console.log(+new Date(), ...args) },
+    warn: function (...args: any[]) { console.warn(+new Date(), ...args) },
+    error: function (...args: any[]) { console.error(+new Date(), ...args) },
+    info: function (...args: any[]) { console.info(+new Date(), ...args) },
+    debug: function (...args: any[]) { console.debug(+new Date(), ...args) },
 }

@@ -9,7 +9,7 @@ import { Monitor, PendingOrder, Transaction } from "../database";
 
 //#region Enums
 
-export const HeartbeatMilliSeconds = 10000;
+export const HeartbeatMilliSeconds = 15000;
 
 export enum MessageTypeEnum {
     MonitorStoped = "MonitorStoped",

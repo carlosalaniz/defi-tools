@@ -145,7 +145,6 @@ export class GlobalMonitorManager {
 
     //#region EventHandlers
     private async OnMessageRecievedAsync(message: MonitorMessageInterface<EmitMessageInterface>) {
-        logger.debug(message);
         let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(message._monitorId).exec();
         monitor!.lastMessageRecieved = +new Date();
         if (message.type === "success") {
@@ -191,19 +190,8 @@ export class GlobalMonitorManager {
         await monitor!.save();
     }
 
-    async OnMessageAsync(_monitorId: string, message: MonitorMessageInterface<EmitMessageInterface>) {
-        let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
-        if (monitor) {
-            monitor.lastMessageRecieved = +new Date();
-            if (message.body.type !== MessageTypeEnum.Heartbeat) {
-                monitor.lastMessage = message.body.payload;
-            }
-            await monitor.save();
-        }
-    }
-
     private async OnMonitorHasPendingOrderErrorAsync(_monitorId: string) {
-        logger.log("OnMonitorHasPendingOrderErrorAsync", _monitorId);
+        logger.warn(_monitorId, "OnMonitorHasPendingOrderErrorAsync");
         let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
         if (monitor) {
             monitor.status = MonitorStatus.HasPendingOrders;
@@ -215,12 +203,12 @@ export class GlobalMonitorManager {
 
     private OnMonitorHeartbeatMessage(_monitorId: string) {
         let lastSeen = GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId].lastSeen
-        logger.log("Heartbeat", _monitorId, ((+new Date()) - lastSeen));
+        logger.info(_monitorId, "Heartbeat");
         GlobalMonitorManager.instance!._globalMonitorRegistry[_monitorId].lastSeen = +new Date();
     }
 
     private async OnMonitorStartedMessageAsync(child: ChildProcess, monitor: Monitor, exchangeCredentials: ExchangeCredentials[]) {
-        logger.log("Process started");
+        logger.log(monitor._id.toString(), "MonitorStarted");
         let pendingOrders = await GlobalMonitorManager.instance!.PendingOrderModel.find(
             { _monitor: monitor._id, resolved: false }
         ).exec();
@@ -233,7 +221,7 @@ export class GlobalMonitorManager {
     }
 
     private async OnMonitorStoppedMessageAsync(_monitorId: string) {
-        logger.log("OnMonitorStopped", _monitorId);
+        logger.info(_monitorId, "MonitorStopped");
         let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
         if (monitor) {
             monitor.status = MonitorStatus.Stopped;
@@ -244,8 +232,9 @@ export class GlobalMonitorManager {
     }
 
     private OnDeltaZeroMessage(_monitorId: string) {
-        logger.log("Delta Zero", _monitorId);
+        logger.log(_monitorId, "DeltaZero");
     }
+
     private async OnPositionMessageAsync(_monitorId: string, positionMessage: MonitorPositionMessage) {
         let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
         if (monitor) {
@@ -255,7 +244,7 @@ export class GlobalMonitorManager {
     }
 
     private async OnNewTransactionMessageAsync(_monitorId: string, transaction: NewTransactionMessage) {
-        logger.log("Transaction", _monitorId, transaction);
+        logger.log(_monitorId, "Transaction", transaction);
         try {
             let newTransaction = new GlobalMonitorManager.instance!.TransactionModel(transaction.payload);
             await newTransaction.save();
@@ -263,12 +252,12 @@ export class GlobalMonitorManager {
             monitor?.transactions?.push(newTransaction._id);
             await monitor!.save();
         } catch (e) {
-            logger.log(e);
+            logger.error(_monitorId, "Transaction",  JSON.stringify(e));
         }
     }
 
     private async OnTradeLimitReachedErrorAsync(_monitorId: string, message: TradeLimitReachedErrorMessage) {
-        logger.log("OnTradeLimitReachedErrorAsync", _monitorId, message);
+        logger.warn(_monitorId, "TradeLimitReached", message);
         let newPendingOrder = new GlobalMonitorManager.instance!.PendingOrderModel(message.payload);
         await newPendingOrder.save()
 
@@ -290,13 +279,13 @@ export class GlobalMonitorManager {
     }
 
     private async OnUnExpectedErrorAsync(_monitorId: string, message: UnexpectedErrorMessage) {
-        logger.log("OnUnExpectedErrorAsync", _monitorId, message);
+        logger.warn(_monitorId, "UnExpectedError", message);
         let monitor = await GlobalMonitorManager.instance!.MonitorModel.findById(_monitorId).exec();
         if (monitor) {
             monitor.status = MonitorStatus.Stopped;
             await monitor.save();
         }
-        logger.log(`Monitor will attempt to restart in ${GlobalMonitorManager._healthcheckTimoutSeconds} seconds...`)
+        logger.warn(_monitorId, `Monitor will attempt to restart in ${GlobalMonitorManager._healthcheckTimoutSeconds} seconds...`)
     }
     //#endregion
 }

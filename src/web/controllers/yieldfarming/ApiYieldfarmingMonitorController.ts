@@ -133,7 +133,10 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
                 delete req.body.exchangeData[i].apisecret;
                 delete req.body.exchangeData[i].exchange;
             }));
-
+            req.body.exchangeData = req.body.exchangeData.map((exD:any)=>{
+                exD.orderDistributionPercentage = exD.orderDistributionPercentage / 100;
+                return exD;
+            })
             let monitor = new MonitorModel(req.body);
             monitor._user = monitorUser._id;
             await monitor.save({session});
