@@ -8,15 +8,18 @@ import { mongoose } from '@typegoose/typegoose';
 import { logger } from '../lib/common/logger';
 const MonitorProcessPath = path.resolve(__dirname + "/tools/yield_farming/auto_balancer/MonitorProcess")
 
-let exchangeCredentials: FTXExchangeCredentials = {
+let exchangeCredentials = {
     _id: new mongoose.Types.ObjectId("5ffa189c933da736fa05d753"),
     exchangeName: ExchangeNames.FTX,
     apikey: "oKWf56Z7PAhKa8C8Czb_-zEz1I4YgKll5FeeA1SL",
     apisecret: "l0LkQM3VG8YBR-ZmdZTw3UK0iOCf4zzefnlPzCmp",
     subaccounts: []
-}
+} as FTXExchangeCredentials & any;
 
 let monitor: Monitor = {
+    tag:"test",
+    lastKnownAssetBalance:4,
+    transactionsCount:1,
     _user: new mongoose.Types.ObjectId("5ffa18a9c0980552035ed1e0"),
     _id: new mongoose.Types.ObjectId("5ffa18a9c0980552035ed1e0"),
     exchangeData: [
