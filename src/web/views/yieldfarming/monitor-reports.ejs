@@ -1,3 +1,62 @@
-
 <%- include('../partials/top') -%>
-<%- include('../partials/bottom') -%>
+    <div class="container" id="report_entries">
+        <button v-on:click="downloadAll()"
+        class="button button-outline gray">Download all</button>
+        <div v-for="(report, i) in reports" class="report">
+            <div class="row">
+                <div class="column center-vertical">
+                    {{report.createdAt}}
+                </div>
+                <div class="column" style="text-align: right">
+                    <button v-on:click="showReport(i)" style="margin:unset"
+                        class="button button-outline gray">Expand</button>
+                    <button v-on:click="copyReportClipboard(i)" style="margin:unset"
+                        class="button button-outline gray">Copy</button>
+                </div>
+            </div>
+            <div class="row" v-if="reports[i].show">
+                <pre>{{JSON.stringify(report, null, 2)}}</pre>
+            </div>
+        </div>
+    </div>
+    <a id="download"></a>
+    <script>
+        let monitor_list = new Vue({
+            el: '#report_entries',
+            data: {
+                reports: []
+            },
+            methods: {
+                getTransactions: async function () {
+                    let id = location.pathname.split("/").splice(-2, 1);
+                    let reportResponse = await apiclient.get(`api/yf/monitor/${id}/reports`);
+                    if (reportResponse.status === 200) {
+                        this.reports = reportResponse.data;
+                        this.reports.forEach(r => r.show = false);
+                    }
+                },
+                showReport(i) {
+                    let report = this.reports[i];
+                    report.show = !report.show;
+                    this.reports.splice(i, 1, report);
+                },
+                async copyReportClipboard(i) {
+                    let report = this.reports[i];
+                    let text = JSON.stringify(report, null, 2);
+                    await navigator.clipboard.writeText(text)
+                    alert("Copied the text: " + text);
+                },
+                async downloadAll($event) {
+                    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.reports, null, 2));
+                    var dlAnchorElem = document.getElementById("download");
+                    dlAnchorElem.setAttribute("href", dataStr);
+                    dlAnchorElem.setAttribute("download", "export.json");
+                    dlAnchorElem.click();
+                }
+            },
+            beforeMount() {
+                this.getTransactions()
+            },
+        });
+    </script>
+    <%- include('../partials/bottom') -%>

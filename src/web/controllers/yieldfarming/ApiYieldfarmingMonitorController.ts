@@ -4,7 +4,7 @@ import { Response, Router } from "express";
 import { Types, startSession } from "mongoose";
 import { BinanceExchangeCredentialsModel, ExchangeCredentialsModel, ExchangeNames, FTXExchangeCredentialsModel } from "../../../lib/common/database";
 import { GlobalMonitorManager } from "../../../tools/yield_farming/auto_balancer/GlobalMonitorManager";
-import { Monitor, MonitorModel, MonitorReportModel, MonitorStatus, MonitorUserModel, PendingOrderModel, TransactionModel } from "../../../tools/yield_farming/database";
+import { Monitor, MonitorModel, MonitorReportModel, MonitorStatus, MonitorUserModel, PendingOrderModel, Transaction, TransactionModel } from "../../../tools/yield_farming/database";
 import { AuthenticatedRequest, BasicAuthMW } from "../../middleware/authentication";
 import { ControllerInterface } from "../ControllerInterface";
 
@@ -27,7 +27,7 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
             "/monitor/:_id/transactions": [
                 { method: "get", callback: [BasicAuthMW, this.GETMonitorTransactions] }
             ],
-            "/monitor/:_id/report": [
+            "/monitor/:_id/reports": [
                 { method: "get", callback: [BasicAuthMW, this.GETMonitorReport] }
             ],
             "/monitor/:_id/pending-orders": [
@@ -43,8 +43,12 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
             let monitor = await MonitorModel.findById(_id)
                 .populate("transactions")
                 .exec();
-            if (monitor && monitor._user!.toString() === req.user!._id.toString()) {
-                let reports = await MonitorReportModel.find({ "report._mid": monitor._id }).exec();
+            let monitorUser = await MonitorUserModel.findOne({ _user: req.user!._id }).exec()
+
+            if (monitor && monitor._user!.toString() === monitorUser!._id.toString()) {
+                let reports = await MonitorReportModel.find({ "report._mid": monitor._id })
+                    .sort({ createdAt: -1 })
+                    .exec();
                 return res.status(200).json(reports.map(r => r.toJSON()));
             }
         }
@@ -75,7 +79,7 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
                 return res.status(200).json(monitor.toJSON({ virtuals: true }).transactions.map((t: any) => {
                     delete t.exchangeData.exchangeCredentials.apisecret
                     return t;
-                }));
+                }).sort((a: Transaction, b: Transaction) =>  +(b.createdAt as Date) - +(a.createdAt as Date)));
             }
         }
         res.status(400).json("400 Bad Request");
@@ -110,7 +114,7 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
                 monitorUser._user = req.user!._id;
                 monitorUser.monitors = [];
                 monitorUser.exchangeCredentials = [];
-                await monitorUser.save({session:session});
+                await monitorUser.save({ session: session });
             }
 
             await Promise.all(req.body.exchangeData.map(async (exData: any, i: number) => {
@@ -125,7 +129,7 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
                     exCredentials.apikey = exData.apikey;
                     exCredentials.apisecret = exData.apisecret;
                     exCredentials._user = req.user!._id;
-                    await exCredentials.save({session});
+                    await exCredentials.save({ session });
                 }
                 monitorUser!.exchangeCredentials!.push(exCredentials._id)
                 req.body.exchangeData[i].exchangeCredentials = exCredentials._id;
@@ -133,16 +137,16 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
                 delete req.body.exchangeData[i].apisecret;
                 delete req.body.exchangeData[i].exchange;
             }));
-            req.body.exchangeData = req.body.exchangeData.map((exD:any)=>{
+            req.body.exchangeData = req.body.exchangeData.map((exD: any) => {
                 exD.orderDistributionPercentage = exD.orderDistributionPercentage / 100;
                 return exD;
             })
             let monitor = new MonitorModel(req.body);
             monitor._user = monitorUser._id;
-            await monitor.save({session});
+            await monitor.save({ session });
 
             monitorUser.monitors.push(monitor._id);
-            await monitorUser.save({session});
+            await monitorUser.save({ session });
 
             await session.commitTransaction();
             session.endSession();

@@ -203,14 +203,34 @@
             flex-direction: column;
         }
 
-        .form-container{
+        .form-container {
             background-color: whitesmoke;
             margin-top: 3rem;
             border-radius: 3rem;
             padding: 3rem;
         }
+
+        div.report {
+            padding: .5em 1em;
+            border-left: 0.3rem solid #808080;
+            background-color: rgb(248, 248, 248);
+            margin-bottom: 1em;
+        }
+
+        div.report pre {
+            padding: initial;
+            border-left: initial;
+            background-color: initial;
+        }
+
+        .center-vertical {
+            display: flex !important;
+            justify-content: center;
+            align-content: center;
+            flex-direction: column;
+        }
     </style>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
