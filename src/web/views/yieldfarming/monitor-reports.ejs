@@ -1,7 +1,6 @@
 <%- include('../partials/top') -%>
     <div class="container" id="report_entries">
-        <button v-on:click="downloadAll()"
-        class="button button-outline gray">Download all</button>
+        <button v-on:click="downloadAll()" class="button button-outline gray">Download all</button>
         <div v-for="(report, i) in reports" class="report">
             <div class="row">
                 <div class="column center-vertical">
@@ -53,7 +52,7 @@
                     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.reports, null, 2));
                     var dlAnchorElem = document.getElementById("download");
                     dlAnchorElem.setAttribute("href", dataStr);
-                    dlAnchorElem.setAttribute("download", "export.json");
+                    dlAnchorElem.setAttribute("download", "export " + new Date().toLocaleString().replace(/[,\/:]/g,"-") + ".json");
                     dlAnchorElem.click();
                 }
             },
