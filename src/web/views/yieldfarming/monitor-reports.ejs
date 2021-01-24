@@ -5,7 +5,7 @@
         <div v-for="(report, i) in reports" class="report">
             <div class="row">
                 <div class="column center-vertical">
-                    {{report.createdAt}}
+                    {{report.localDate}}
                 </div>
                 <div class="column" style="text-align: right">
                     <button v-on:click="showReport(i)" style="margin:unset"
@@ -31,8 +31,11 @@
                     let id = location.pathname.split("/").splice(-2, 1);
                     let reportResponse = await apiclient.get(`api/yf/monitor/${id}/reports`);
                     if (reportResponse.status === 200) {
-                        this.reports = reportResponse.data;
-                        this.reports.forEach(r => r.show = false);
+                        reportResponse.data.forEach(r => {
+                            r.show = false
+                            r.localDate = new Date(r.createdAt).toLocaleString();
+                        });
+                        this.reports = [...reportResponse.data]
                     }
                 },
                 showReport(i) {
