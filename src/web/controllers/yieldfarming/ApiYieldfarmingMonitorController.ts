@@ -79,7 +79,7 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
                 return res.status(200).json(monitor.toJSON({ virtuals: true }).transactions.map((t: any) => {
                     delete t.exchangeData.exchangeCredentials.apisecret
                     return t;
-                }).sort((a: Transaction, b: Transaction) =>  +(b.createdAt as Date) - +(a.createdAt as Date)));
+                }).sort((a: Transaction, b: Transaction) => +(b.createdAt as Date) - +(a.createdAt as Date)));
             }
         }
         res.status(400).json("400 Bad Request");
@@ -91,7 +91,8 @@ export class ApiYieldfarmingMonitorController extends ControllerInterface {
             let monitor = await MonitorModel.findById(_id)
                 .populate({ path: 'transactions', populate: { path: 'exchangeData.exchangeCredentials' } })
                 .exec();
-            if (monitor && monitor._user!.toString() === req.user!._id.toString()) {
+            let monitorUser = await MonitorUserModel.findOne({ _user: req.user!._id }).exec()
+            if (monitor && monitor._user!.toString() === monitorUser!._id.toString()) {
                 let pendingOrders = await PendingOrderModel.find({ _monitor: _id, resolved: false }).exec();
                 return res.status(200).json(pendingOrders.map(po => po.toJSON()));
             }
