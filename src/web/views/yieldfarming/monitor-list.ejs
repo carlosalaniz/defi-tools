@@ -12,6 +12,7 @@
                 </h3>
                 <a onclick="newMonitor.showForm = true" class="float-right button button-outline gray">Create new
                     monitor</a>
+                <a onclick="monitor_list.getMonitors()" class="float-right button button-outline gray" style="margin-right: 1em;">Refresh</a>
             </div>
         </div>
         <div v-if="showForm" id="newMonitor" @keydown.esc="console.log(1)">
@@ -326,6 +327,7 @@
                         case "haspendingorders": return "monitor-pending";
                     }
                 },
+
                 resolvePendingOrder: async function (mid, id) {
                     loading.show = true;
                     await apiclient.post(`api/yf/monitor/${mid}/pending-orders`, {
@@ -336,9 +338,11 @@
                 },
                 getMonitorLoop: async function () {
                     await this.getMonitors();
-                    setTimeout(this.getMonitorLoop, 2000);
+                    // setTimeout(this.getMonitorLoop, 2000);
                 },
+
                 getMonitors: async function () {
+                    console.log("hola")
                     let monitorResponse = await apiclient.get("api/yf/monitor")
                     await Promise.all(monitorResponse.data.map(async m => {
                         var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
