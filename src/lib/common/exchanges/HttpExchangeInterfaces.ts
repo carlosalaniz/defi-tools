@@ -16,8 +16,8 @@ export interface CheckBalanceInterface extends HttpExchangeInterface {
 }
 
 export interface TradeFuturesInterface extends HttpExchangeInterface {
-    orderPrecision: number;
-    tryPlaceFuturesMarketOrderAsync(amount: number, side: TransactionsSide, market: string): Promise<void>;
+    getQuantityStep(asset: string): number;
+    tryPlaceFuturesMarketOrderAsync(amount: number, side: TransactionsSide, market: string): Promise<number|void>;
     tryGetAccountInformationAsync(subaccount?: string): Promise<any>;
 }
 

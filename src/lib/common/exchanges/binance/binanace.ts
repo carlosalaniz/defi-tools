@@ -2,8 +2,6 @@ import { CheckBalanceInterface, CheckExchangeRatesInterface, TradeFuturesInterfa
 import axios, { AxiosInstance } from 'axios';
 import * as crypto from "crypto";
 export default class BinanceExchange implements TradeFuturesInterface, CheckBalanceInterface, CheckExchangeRatesInterface {
-
-    orderPrecision: number = 1;
     exchangeName = "Binance";
     stableAssetMap: { [key: string]: string; } = {
         "USD": "USDT"
@@ -32,6 +30,13 @@ export default class BinanceExchange implements TradeFuturesInterface, CheckBala
                 'content-type': 'application/json'
             }
         });
+    }
+
+    getQuantityStep(asset: string): number {
+        let quantityStep: { [index: string]: number } = {
+            "MATIC": 1
+        };
+        return (quantityStep[asset] != null) ? quantityStep[asset] : .01
     }
 
     private signPayload(queryString: string): string {

@@ -22,7 +22,7 @@ type MonitorExchanges = {
 
 export class MonitorProcess {
     private _exchanges!: MonitorExchanges[];
-    private _maxPrecision!: number;
+    private _minimumQuantityStep!: number;
     private _heartbeatMilliSeconds = HeartbeatMilliSeconds;
     private _monitor!: Monitor;
     private _contract!: GetHedgeTargetInterface;
@@ -83,21 +83,18 @@ export class MonitorProcess {
         return true;
     }
 
-    private static getMaxOrderPrecision() {
-        let lastIndex = MonitorProcess._self._exchanges.length - 1;
-        return MonitorProcess._self._exchanges[lastIndex].exchange!.orderPrecision;
-    }
-
     private async tryPlaceDistributedOrderAsync(amount: number, side: TransactionsSide) {
         let batchId: string | undefined = uuidv4();
         let transactions: Transaction[] = [];
         let carryOver = 0;
+        MonitorProcess._self._exchanges.sort((a, b) => b.exchange!.getQuantityStep(b.tradeSymbol) - a.exchange!.getQuantityStep(a.tradeSymbol));
         for (let i = 0; i < MonitorProcess._self._exchanges.length; i++) {
             let exchangeObj = MonitorProcess._self._exchanges[i];
             let orderDistributionPercentage = (exchangeObj.orderDistributionPercentage || 0);
             let ordersize = carryOver + (amount * orderDistributionPercentage);
-            let preciseOrderSize = +ordersize.toFixed(exchangeObj.exchange!.orderPrecision);
-            carryOver = ordersize - preciseOrderSize;
+            let quantityStep = exchangeObj.exchange!.getQuantityStep(exchangeObj.tradeSymbol);
+            let preciseOrderSize = Math.floor(ordersize / quantityStep) * quantityStep;
+            carryOver = ordersize % quantityStep;
             if (preciseOrderSize > 0) {
                 await exchangeObj.exchange!.tryPlaceFuturesMarketOrderAsync(preciseOrderSize, side, exchangeObj.market);
                 let exchangeData = { ...exchangeObj } as MonitorExchanges;
@@ -160,8 +157,8 @@ export class MonitorProcess {
                 }
 
                 let rawPosition = await MonitorProcess._self.getTotalPositionAsync();
-                let hedgeTarget = +rawHedgeTarget.toFixed(MonitorProcess._self._maxPrecision);
-                let position = +rawPosition.toFixed(MonitorProcess._self._maxPrecision);
+                let hedgeTarget = +rawHedgeTarget.toFixed(MonitorProcess._self._minimumQuantityStep);
+                let position = +rawPosition.toFixed(MonitorProcess._self._minimumQuantityStep);
                 let delta = +(hedgeTarget + position);
                 let absDelta = Math.abs(delta);
 
@@ -303,10 +300,6 @@ export class MonitorProcess {
 
                     throw "monitorExchangeCredentials not found";
                 });
-
-            // Precision
-            MonitorProcess._self._exchanges.sort((a, b) => a.exchange!.orderPrecision - b.exchange!.orderPrecision);
-            MonitorProcess._self._maxPrecision = MonitorProcess.getMaxOrderPrecision();
         } catch (e) {
             MonitorProcess.handleError({
                 action: "messageout",

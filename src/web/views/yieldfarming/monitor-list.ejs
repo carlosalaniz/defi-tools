@@ -12,7 +12,8 @@
                 </h3>
                 <a onclick="newMonitor.showForm = true" class="float-right button button-outline gray">Create new
                     monitor</a>
-                <a onclick="monitor_list.getMonitors()" class="float-right button button-outline gray" style="margin-right: 1em;">Refresh</a>
+                <a onclick="monitor_list.getMonitors()" class="float-right button button-outline gray"
+                    style="margin-right: 1em;">Refresh</a>
             </div>
         </div>
         <div v-if="showForm" id="newMonitor" @keydown.esc="console.log(1)">
@@ -129,7 +130,8 @@
 
                         </div>
                         <b>Contract:</b> {{monitor.contractName.toUpperCase()}}<br>
-                        <b>Last known asset balance:</b> {{monitor.lastKnownAssetBalance.toFixed(2)}}<br>
+                        <b>Last known asset balance:</b> {{monitor.lastKnownAssetBalance &&
+                        monitor.lastKnownAssetBalance.toFixed(2)}}<br>
                         <b>Wallet address:</b> {{monitor.walletAddress}}<br>
                         <b>Contract address:</b> {{monitor.contractAddress}}<br>
                         <b>Target asset address:</b> {{monitor.targetAssetAddress}}<br>
@@ -202,7 +204,7 @@
                             </thead>
                             <tbody>
                                 <tr v-for="(openOrder,i) in monitor.openOrders" :key="i">
-                                    <td>{{openOrder.ordersize.toFixed(2)}}</td>
+                                    <td>{{openOrder.ordersize && openOrder.ordersize.toFixed(2)}}</td>
                                     <td>{{openOrder.side.toUpperCase()}}</td>
                                     <td>{{new Date(openOrder.createdAt).toLocaleString()}}</td>
                                     <td><button v-on:click="resolvePendingOrder(monitor._id, openOrder._id)"
@@ -247,7 +249,7 @@
                     tradeMinimumAmount: "number",
                     tradeMaxminumAmount: "number",
                     refreshRateSeconds: "number",
-                    contractName: ["select a protocol", "balancer", "1inch"],
+                    contractName: ["select a protocol", "balancer", "1inch", "quickswap"],
                     contractAddress: "text",
                     web3HttpConnectionString: "text",
                     walletAddress: "text",
@@ -336,6 +338,7 @@
                     await this.getMonitors();
                     loading.show = false;
                 },
+
                 getMonitorLoop: async function () {
                     await this.getMonitors();
                     // setTimeout(this.getMonitorLoop, 2000);

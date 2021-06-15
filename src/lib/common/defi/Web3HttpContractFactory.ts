@@ -14,5 +14,8 @@ export class Web3HttpContractFactory extends BaseWeb3HttpContractFactory {
         this.contractResgistry[ContractEnum.OneInch] = {
             abi: require("./1inch/abi.json")
         }
+        this.contractResgistry[ContractEnum.QuickSwap] = {
+            abi: require("./quickSwap/abi.json")
+        }
     }
 }

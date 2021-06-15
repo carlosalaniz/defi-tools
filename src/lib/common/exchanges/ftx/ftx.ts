@@ -2,8 +2,6 @@ import { CheckBalanceInterface, CheckExchangeRatesInterface, TradeFuturesInterfa
 import axios, { AxiosInstance } from 'axios';
 import * as crypto from "crypto";
 export default class FTXExchange implements TradeFuturesInterface, CheckBalanceInterface, CheckExchangeRatesInterface {
-    orderPrecision: number = 2;
-
     exchangeName: string = "FTX";
 
     stableAssetMap: { [key: string]: string; } = {
@@ -35,7 +33,14 @@ export default class FTXExchange implements TradeFuturesInterface, CheckBalanceI
             headers: headers
         });
     }
-    
+
+    getQuantityStep(asset: string): number {
+        let quantityStep: { [index: string]: number } = {
+            "MATIC": 1
+        };
+        return (quantityStep[asset] != null) ? quantityStep[asset] : .001
+    }
+
     private signPayload(time: number, method: "get" | "post", api_enpoint: string, body?: any): string {
         var hmac = crypto.createHmac('sha256', this.apisecret);
         let payload = "";
@@ -110,7 +115,7 @@ export default class FTXExchange implements TradeFuturesInterface, CheckBalanceI
         }
     }
 
-    async tryPlaceFuturesMarketOrderAsync(amount: number, side: TransactionsSide, market: string): Promise<void> {
+    async tryPlaceFuturesMarketOrderAsync(amount: number, side: TransactionsSide, market: string): Promise<number> {
         let path = "/api/orders";
         let payload = {
             market: market,
@@ -121,12 +126,13 @@ export default class FTXExchange implements TradeFuturesInterface, CheckBalanceI
         }
         let time = + new Date();
         try {
-            await this.api.post(path, payload, {
+            let response = await this.api.post(path, payload, {
                 headers: {
                     'FTX-TS': time.toString(),
                     'FTX-SIGN': this.signPayload(time, "post", path, JSON.stringify(payload))
                 }
             });
+            return response.data.result.size;
         } catch (e) {
             if (e && e.response.status >= 400 && e.response.status < 500) {
                 throw {
